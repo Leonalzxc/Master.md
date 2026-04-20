@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#eef2f7" />
+    <meta name="description" content="MASTER — заказы и услуги мастеров по ремонту и стройке в Кишинёве и Бельцах." />
+    <title>MASTER · Молдова</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Outfit:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./assets/styles.css" />
+    <link rel="stylesheet" href="./design-system/tokens.mvp.css" />
+  </head>
+  <body class="app-body">
+    <a class="skip-link" href="#app">К содержимому</a>
+    <div class="nav-backdrop" id="navBackdrop" hidden aria-hidden="true"></div>
+
+    <header class="site-header">
+      <div class="container header-inner">
+        <a class="brand" href="#/" lang="en" translate="no">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span class="brand-text">MASTER</span>
+        </a>
+
+        <div class="header-end">
+          <nav class="site-nav" id="site-navigation" aria-label="Основная навигация">
+            <div class="nav-cluster" role="presentation">
+              <span class="nav-cluster-label" data-i18n="navClusterService">Сервис</span>
+              <div class="nav-cluster-links">
+                <a href="#/jobs" class="nav-link" data-i18n="navJobs">Заказы</a>
+                <a href="#/gigs" class="nav-link" data-i18n="navGigs">Услуги</a>
+                <a href="#/workers" class="nav-link" data-i18n="navFind">Мастера</a>
+              </div>
+            </div>
+            <div class="nav-cluster nav-cluster--secondary" role="presentation">
+              <span class="nav-cluster-label" data-i18n="navClusterMore">Ещё</span>
+              <div class="nav-cluster-links">
+                <a href="#/categories" class="nav-link" data-i18n="navCategories">Категории</a>
+                <a href="#/for-workers" class="nav-link" data-i18n="navForWorkers">Мастерам</a>
+                <a href="#/messages" class="nav-link" data-i18n="navMessages">Сообщения</a>
+                <a href="#/auth" class="nav-link nav-link--accent" data-i18n="navLogin">Вход</a>
+              </div>
+            </div>
+          </nav>
+        </div>
+
+        <div class="header-toolbar">
+          <a href="#/request/new" class="header-cta" data-i18n="navCreate">Заявка</a>
+          <button type="button" id="langToggle" class="lang-btn" aria-label="Сменить язык">RU</button>
+          <button
+            type="button"
+            class="nav-toggle"
+            id="navToggle"
+            aria-expanded="false"
+            aria-controls="site-navigation"
+            aria-label="Меню"
+          >
+            <span class="nav-toggle-inner">
+              <span class="nav-toggle-bar"></span>
+              <span class="nav-toggle-bar"></span>
+              <span class="nav-toggle-bar"></span>
+            </span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main id="app" class="main-content container" tabindex="-1"></main>
+
+    <footer class="site-footer">
+      <div class="container footer-inner">
+        <div class="footer-grid">
+          <div class="footer-brand-col">
+            <a class="footer-brand" href="#/" lang="en" translate="no">MASTER</a>
+            <p class="footer-tagline" data-i18n="footerTagline">
+              Поиск мастеров по районам Кишинева и Бельц.
+            </p>
+          </div>
+          <div class="footer-col">
+            <h2 class="footer-heading" data-i18n="footerCities">Города</h2>
+            <ul class="footer-list">
+              <li><a href="#/jobs?city=Chisinau">Chisinau</a></li>
+              <li><a href="#/jobs?city=Balti">Balti</a></li>
+            </ul>
+          </div>
+          <div class="footer-col">
+            <h2 class="footer-heading" data-i18n="footerLegal">Правила</h2>
+            <ul class="footer-list">
+              <li><a href="#/legal/terms">Условия</a></li>
+              <li><a href="#/legal/privacy">Конфиденциальность</a></li>
+              <li><a href="#/legal/moderation">Модерация</a></li>
+              <li><a href="#/legal/reviews">Отзывы</a></li>
+            </ul>
+          </div>
+          <div class="footer-col">
+            <h2 class="footer-heading" data-i18n="footerHelp">Поддержка</h2>
+            <ul class="footer-list">
+              <li><a href="#/support">FAQ</a></li>
+              <li><a href="#/pricing" data-i18n="navPricing">Тарифы PRO</a></li>
+              <li><a href="#/admin/moderation">Админ</a></li>
+            </ul>
+          </div>
+        </div>
+        <div class="footer-bottom">
+          <p>© MASTER · Молдова · Информационный сервис для заказчиков и мастеров</p>
+        </div>
+      </div>
+    </footer>
+
+    <script src="./assets/app.js"></script>
+  </body>
+</html>

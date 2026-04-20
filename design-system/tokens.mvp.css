@@ -1,0 +1,141 @@
+/**
+ * MASTER — MVP design tokens
+ * Совместимость: загружать после assets/styles.css (или влить в :root того же файла).
+ * Базовые цвета/радиусы/шрифты ссылаются на переменные из styles.css.
+ */
+
+:root {
+  /* ─── Grid & touch (8pt base, 4pt для половинных шагов) ─── */
+  --grid-unit: 8px;
+  --touch-target-min: 44px;
+  --touch-padding-hit: 12px; /* добивка до 44px при визуально меньшем контроле */
+
+  /* ─── Semantic colors → legacy tokens ─── */
+  --color-bg-page: var(--bg-deep);
+  --color-bg-elevated: var(--bg-elevated);
+  --color-bg-surface: var(--surface-2);
+  --color-bg-subtle: var(--surface-subtle);
+  --color-border-default: var(--glass-border);
+  --color-border-strong: var(--glass-border-strong);
+  --color-text-primary: var(--text);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-text-on-accent: #ffffff;
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-deep);
+  --color-accent-muted: var(--accent-dim);
+  --color-success: var(--success);
+  --color-success-strong: var(--success-deep);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-danger-bg: rgba(225, 29, 72, 0.08);
+  --color-danger-border: rgba(225, 29, 72, 0.35);
+  --color-scrim: var(--scrim);
+  --color-focus-ring: var(--accent-deep);
+  /* Не переопределяйте --focus-ring из styles.css; для новых компонентов: */
+
+  /* ─── Typography scale (RU/RO: не сжимать ниже body без причины) ─── */
+  --font-family-body: var(--font-sans);
+  --font-family-display: var(--font-display);
+  --font-size-caption: 0.75rem;
+  --font-size-body-sm: 0.875rem;
+  --font-size-body: var(--text-body);
+  --font-size-body-lg: 1.0625rem;
+  --font-size-title-sm: 1.125rem;
+  --font-size-title: 1.25rem;
+  --font-size-title-lg: var(--text-h1);
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --line-height-tight: var(--leading-tight);
+  --line-height-body: var(--leading-body);
+  --line-height-single: 1.25;
+  --letter-spacing-tight: -0.01em;
+  --letter-spacing-caps: 0.06em;
+
+  /* ─── Spacing (8pt-шкала; совпадает с --space-* в styles.css) ─── */
+  --space-0: 0;
+  --space-half: var(--space-1); /* 4px — половинный шаг сетки */
+  --space-1x: var(--space-2); /* 8 */
+  --space-2x: var(--space-3); /* 12 — между 8 и 16 */
+  --space-3x: var(--space-4); /* 16 */
+  --space-4x: var(--space-5); /* 24 */
+  --space-5x: var(--space-6); /* 32 */
+  --space-6x: var(--space-8); /* 48 */
+
+  /* ─── Radius & elevation ─── */
+  --radius-2xs: var(--radius-xs);
+  --radius-xs-token: var(--radius-xs);
+  --radius-sm-token: var(--radius-sm);
+  --radius-md-token: var(--radius-md);
+  --radius-lg-token: var(--radius-lg);
+  --radius-xl-token: var(--radius-xl);
+  --radius-full: 9999px;
+  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06);
+  --shadow-md: 0 4px 16px rgba(15, 23, 42, 0.08);
+  --shadow-lg: var(--shadow-soft);
+  --shadow-nav-token: var(--shadow-nav);
+
+  /* ─── Focus (дублирует логику --focus-ring в styles.css; использовать box-shadow: var(--focus-ring) или ниже) ─── */
+  --ds-focus-ring-offset: 2px;
+  --ds-focus-ring-width: 2px;
+  --ds-focus-ring-color: var(--color-focus-ring);
+  --ds-focus-ring: 0 0 0 var(--ds-focus-ring-offset) var(--bg-elevated),
+    0 0 0 calc(var(--ds-focus-ring-offset) + var(--ds-focus-ring-width)) var(--ds-focus-ring-color);
+
+  /* ─── Form / status ─── */
+  --input-min-height: var(--touch-target-min);
+  --input-padding-x: var(--space-4);
+  --input-padding-y: 10px;
+  --input-border: var(--glass-border-strong);
+  --input-border-hover: rgba(15, 23, 42, 0.22);
+  --input-border-focus: var(--accent-deep);
+  --input-border-error: var(--color-danger);
+  --input-bg: var(--bg-elevated);
+  --input-bg-disabled: var(--surface-2);
+  --input-placeholder: var(--text-muted);
+
+  /* ─── Motion ─── */
+  --duration-fast: 0.15s;
+  --duration-normal: var(--transition);
+  --duration-slow: var(--transition-slow);
+  --easing-default: var(--ease-out);
+
+  /* ─── Z-index scale ─── */
+  --z-base: 0;
+  --z-dropdown: 50;
+  --z-sticky: 60;
+  --z-drawer: 70;
+  --z-modal: 80;
+  --z-toast: 90;
+  --z-tooltip: 100;
+
+  /* ─── i18n / overflow (классы в MD, реализация в CSS компонентов) ─── */
+  --text-overflow-fade-width: 2rem;
+}
+
+/* Утилиты переполнения для длинных RU/RO строк */
+.ds-text-clamp-1 {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.ds-text-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.ds-min-touch {
+  min-height: var(--touch-target-min);
+  min-width: var(--touch-target-min);
+}

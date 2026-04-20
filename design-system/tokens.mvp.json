@@ -1,0 +1,111 @@
+{
+  "$schema": "https://design-tokens.github.io/community-group/format/v1.0.0/schema.json",
+  "name": "MASTER MVP",
+  "description": "Токены совместимы с :root в assets/styles.css — значения цветов дублируют референс для импорта в Figma Token Studio / Tokens Studio.",
+  "grid": {
+    "unit": { "$type": "dimension", "$value": "8px", "$description": "Базовая ячейка 8pt; 4px — половинный шаг (--space-1)" },
+    "touchTargetMin": { "$type": "dimension", "$value": "44px" }
+  },
+  "color": {
+    "bg": {
+      "page": { "$type": "color", "$value": "#eef2f7", "$css": "var(--bg-deep)" },
+      "elevated": { "$type": "color", "$value": "#ffffff", "$css": "var(--bg-elevated)" },
+      "surface": { "$type": "color", "$value": "#f8fafc", "$css": "var(--surface-2)" },
+      "subtle": { "$type": "color", "$value": "rgba(15, 23, 42, 0.04)", "$css": "var(--surface-subtle)" }
+    },
+    "border": {
+      "default": { "$type": "color", "$value": "rgba(15, 23, 42, 0.09)", "$css": "var(--glass-border)" },
+      "strong": { "$type": "color", "$value": "rgba(15, 23, 42, 0.14)", "$css": "var(--glass-border-strong)" }
+    },
+    "text": {
+      "primary": { "$type": "color", "$value": "#0f172a", "$css": "var(--text)" },
+      "secondary": { "$type": "color", "$value": "#475569", "$css": "var(--text-secondary)" },
+      "muted": { "$type": "color", "$value": "#64748b", "$css": "var(--text-muted)" },
+      "onAccent": { "$type": "color", "$value": "#ffffff" }
+    },
+    "accent": {
+      "default": { "$type": "color", "$value": "#0ea5e9", "$css": "var(--accent)" },
+      "strong": { "$type": "color", "$value": "#0284c7", "$css": "var(--accent-deep)" },
+      "muted": { "$type": "color", "$value": "rgba(14, 165, 233, 0.12)", "$css": "var(--accent-dim)" }
+    },
+    "success": {
+      "default": { "$type": "color", "$value": "#16a34a", "$css": "var(--success)" },
+      "strong": { "$type": "color", "$value": "#15803d", "$css": "var(--success-deep)" }
+    },
+    "warning": { "$type": "color", "$value": "#d97706", "$css": "var(--warning)" },
+    "danger": { "$type": "color", "$value": "#e11d48", "$css": "var(--danger)" },
+    "dangerBg": { "$type": "color", "$value": "rgba(225, 29, 72, 0.08)" },
+    "dangerBorder": { "$type": "color", "$value": "rgba(225, 29, 72, 0.35)" },
+    "scrim": { "$type": "color", "$value": "rgba(15, 23, 42, 0.4)", "$css": "var(--scrim)" }
+  },
+  "font": {
+    "family": {
+      "sans": { "$type": "fontFamily", "$value": ["DM Sans", "system-ui", "-apple-system", "sans-serif"], "$css": "var(--font-sans)" },
+      "display": { "$type": "fontFamily", "$value": ["Outfit", "DM Sans", "system-ui", "sans-serif"], "$css": "var(--font-display)" }
+    },
+    "size": {
+      "caption": { "$type": "dimension", "$value": "12px" },
+      "bodySm": { "$type": "dimension", "$value": "14px" },
+      "body": { "$type": "dimension", "$value": "15px", "$description": "fluid clamp в CSS — var(--text-body)" },
+      "bodyLg": { "$type": "dimension", "$value": "17px" },
+      "titleSm": { "$type": "dimension", "$value": "18px" },
+      "title": { "$type": "dimension", "$value": "20px" }
+    },
+    "weight": {
+      "regular": { "$type": "fontWeight", "$value": "400" },
+      "medium": { "$type": "fontWeight", "$value": "500" },
+      "semibold": { "$type": "fontWeight", "$value": "600" },
+      "bold": { "$type": "fontWeight", "$value": "700" }
+    },
+    "lineHeight": {
+      "tight": { "$type": "number", "$value": 1.2 },
+      "body": { "$type": "number", "$value": 1.6 }
+    }
+  },
+  "spacing": {
+    "0": { "$type": "dimension", "$value": "0" },
+    "1": { "$type": "dimension", "$value": "4px", "$css": "var(--space-1)" },
+    "2": { "$type": "dimension", "$value": "8px", "$css": "var(--space-2)" },
+    "3": { "$type": "dimension", "$value": "12px", "$css": "var(--space-3)" },
+    "4": { "$type": "dimension", "$value": "16px", "$css": "var(--space-4)" },
+    "5": { "$type": "dimension", "$value": "24px", "$css": "var(--space-5)" },
+    "6": { "$type": "dimension", "$value": "32px", "$css": "var(--space-6)" },
+    "8": { "$type": "dimension", "$value": "48px", "$css": "var(--space-8)" }
+  },
+  "radius": {
+    "xs": { "$type": "dimension", "$value": "6px", "$css": "var(--radius-xs)" },
+    "sm": { "$type": "dimension", "$value": "10px", "$css": "var(--radius-sm)" },
+    "md": { "$type": "dimension", "$value": "14px", "$css": "var(--radius-md)" },
+    "lg": { "$type": "dimension", "$value": "20px", "$css": "var(--radius-lg)" },
+    "xl": { "$type": "dimension", "$value": "24px", "$css": "var(--radius-xl)" },
+    "full": { "$type": "dimension", "$value": "9999px" }
+  },
+  "shadow": {
+    "xs": { "$type": "shadow", "$value": { "offsetX": 0, "offsetY": 1, "blur": 2, "spread": 0, "color": "rgba(15,23,42,0.05)" } },
+    "sm": { "$type": "shadow", "$value": { "offsetX": 0, "offsetY": 1, "blur": 3, "spread": 0, "color": "rgba(15,23,42,0.06)" } },
+    "md": { "$type": "shadow", "$value": { "offsetX": 0, "offsetY": 4, "blur": 16, "spread": 0, "color": "rgba(15,23,42,0.08)" } },
+    "soft": { "$type": "shadow", "$value": { "offsetX": 0, "offsetY": 20, "blur": 48, "spread": 0, "color": "rgba(15,23,42,0.08)" }, "$css": "var(--shadow-soft)" }
+  },
+  "motion": {
+    "duration": {
+      "fast": { "$type": "duration", "$value": "150ms" },
+      "normal": { "$type": "duration", "$value": "200ms" },
+      "slow": { "$type": "duration", "$value": "320ms" }
+    },
+    "easing": {
+      "out": { "$type": "cubicBezier", "$value": [0.22, 1, 0.36, 1] }
+    }
+  },
+  "zIndex": {
+    "dropdown": { "$type": "number", "$value": 50 },
+    "sticky": { "$type": "number", "$value": 60 },
+    "drawer": { "$type": "number", "$value": 70 },
+    "modal": { "$type": "number", "$value": 80 },
+    "toast": { "$type": "number", "$value": 90 },
+    "tooltip": { "$type": "number", "$value": 100 }
+  },
+  "layout": {
+    "contentMax": { "$type": "dimension", "$value": "1120px", "$css": "var(--content-max)" },
+    "headerHeight": { "$type": "dimension", "$value": "4.75rem", "$css": "var(--header-h)" }
+  }
+}

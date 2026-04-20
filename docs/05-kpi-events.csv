@@ -1,0 +1,12 @@
+event_name,trigger,required_params,kpi_link
+request_form_started,User opens request wizard,"user_id,role,city,timestamp",request_publish_rate
+request_step_completed,Each request wizard step success,"user_id,role,city,step_name,timestamp",request_publish_rate
+request_published,Request successfully published,"user_id,role,city,area,category,job_id,timestamp",LiquidityRate
+worker_signup_completed,Worker OTP success,"user_id,role,city,timestamp",worker_profile_completion_rate
+worker_profile_completed,Worker profile saved with required fields,"user_id,role,city,category,timestamp",worker_profile_completion_rate
+bid_sent,Worker sends bid to request,"user_id,role,city,area,category,job_id,worker_id,timestamp",avg_bids_per_request
+first_bid_received_for_request,First bid event for a request,"job_id,city,area,category,timestamp",time_to_first_bid_minutes
+worker_selected,Client selected a worker,"user_id,role,job_id,worker_id,city,area,category,timestamp",request_to_selection_rate
+contact_revealed,Client contact opened for selected pair,"user_id,role,job_id,worker_id,timestamp",LiquidityRate
+review_submitted,Client leaves review,"user_id,role,job_id,worker_id,rating,timestamp",post_selection_review_rate
+admin_block_action,Admin blocks suspicious entity,"user_id,role,entity_type,entity_id,reason,timestamp",fraud_block_rate

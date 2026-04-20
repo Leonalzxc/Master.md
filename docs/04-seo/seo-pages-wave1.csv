@@ -1,0 +1,31 @@
+language,service,city,area,url,title
+ru,Электрика,Кишинёв,Буюканы,/ru/services/electrika/chisinau/buiucani,Электрика в Кишинёве, Буюканы — цены и мастера
+ru,Электрика,Кишинёв,Рышкановка,/ru/services/electrika/chisinau/riscani,Электрика в Кишинёве, Рышкановка — цены и мастера
+ru,Электрика,Кишинёв,Центр,/ru/services/electrika/chisinau/centru,Электрика в Кишинёве, Центр — цены и мастера
+ru,Сантехника,Кишинёв,Ботаника,/ru/services/santehnika/chisinau/botanica,Сантехника в Кишинёве, Ботаника — цены и мастера
+ru,Сантехника,Кишинёв,Чеканы,/ru/services/santehnika/chisinau/ciocana,Сантехника в Кишинёве, Чеканы — цены и мастера
+ru,Сантехника,Кишинёв,Телецентр,/ru/services/santehnika/chisinau/telecentru,Сантехника в Кишинёве, Телецентр — цены и мастера
+ru,Отделка,Кишинёв,Ботаника,/ru/services/otdelka/chisinau/botanica,Отделка в Кишинёве, Ботаника — цены и мастера
+ru,Отделка,Кишинёв,Центр,/ru/services/otdelka/chisinau/centru,Отделка в Кишинёве, Центр — цены и мастера
+ru,Крыша,Кишинёв,Буюканы,/ru/services/krovlya/chisinau/buiucani,Кровельные работы в Кишинёве, Буюканы
+ru,Укладка плитки,Кишинёв,Рышкановка,/ru/services/plitka/chisinau/riscani,Укладка плитки в Кишинёве, Рышкановка
+ru,Мелкий ремонт,Кишинёв,Центр,/ru/services/melkiy-remont/chisinau/centru,Мелкий ремонт в Кишинёве, Центр
+ru,Электрика,Бельцы,Центр,/ru/services/electrika/balti/centru,Электрика в Бельцах, Центр — цены и мастера
+ru,Сантехника,Бельцы,Центр,/ru/services/santehnika/balti/centru,Сантехника в Бельцах, Центр — цены и мастера
+ru,Отделка,Бельцы,Слободзея,/ru/services/otdelka/balti/slobozia,Отделка в Бельцах, Слободзея — цены и мастера
+ru,Укладка плитки,Бельцы,БАМ,/ru/services/plitka/balti/bam,Укладка плитки в Бельцах, БАМ
+ro,Electrica,Chisinau,Buiucani,/ro/servicii/electrica/chisinau/buiucani,Electrica in Chisinau, Buiucani — preturi si mesteri
+ro,Electrica,Chisinau,Riscani,/ro/servicii/electrica/chisinau/riscani,Electrica in Chisinau, Riscani — preturi si mesteri
+ro,Electrica,Chisinau,Centru,/ro/servicii/electrica/chisinau/centru,Electrica in Chisinau, Centru — preturi si mesteri
+ro,Sanitar,Chisinau,Botanica,/ro/servicii/sanitar/chisinau/botanica,Sanitar in Chisinau, Botanica — preturi si mesteri
+ro,Sanitar,Chisinau,Ciocana,/ro/servicii/sanitar/chisinau/ciocana,Sanitar in Chisinau, Ciocana — preturi si mesteri
+ro,Sanitar,Chisinau,Telecentru,/ro/servicii/sanitar/chisinau/telecentru,Sanitar in Chisinau, Telecentru — preturi si mesteri
+ro,Finisaje,Chisinau,Botanica,/ro/servicii/finisaje/chisinau/botanica,Finisaje in Chisinau, Botanica — preturi si mesteri
+ro,Finisaje,Chisinau,Centru,/ro/servicii/finisaje/chisinau/centru,Finisaje in Chisinau, Centru — preturi si mesteri
+ro,Acoperis,Chisinau,Buiucani,/ro/servicii/acoperis/chisinau/buiucani,Acoperis in Chisinau, Buiucani
+ro,Placare,Chisinau,Riscani,/ro/servicii/placare/chisinau/riscani,Placare in Chisinau, Riscani
+ro,Reparatii mici,Chisinau,Centru,/ro/servicii/reparatii-mici/chisinau/centru,Reparatii mici in Chisinau, Centru
+ro,Electrica,Balti,Centru,/ro/servicii/electrica/balti/centru,Electrica in Balti, Centru — preturi si mesteri
+ro,Sanitar,Balti,Centru,/ro/servicii/sanitar/balti/centru,Sanitar in Balti, Centru — preturi si mesteri
+ro,Finisaje,Balti,Slobozia,/ro/servicii/finisaje/balti/slobozia,Finisaje in Balti, Slobozia — preturi si mesteri
+ro,Placare,Balti,Bam,/ro/servicii/placare/balti/bam,Placare in Balti, Bam
