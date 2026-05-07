@@ -43,10 +43,12 @@ export default function AuthForm({ locale, next }: { locale: string; next?: stri
     if (err) { setError(err.message); setLoading(false); return; }
 
     if (data.user) {
-      // Ensure profile exists
+      // Check if profile exists and is complete (has name)
       const { data: existing } = await supabase
-        .from('profiles').select('id').eq('id', data.user.id).single();
+        .from('profiles').select('id, name').eq('id', data.user.id).single();
+
       if (!existing) {
+        // New user — create minimal profile, redirect to onboarding
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await (supabase.from('profiles') as any).insert({
           id: data.user.id,
@@ -54,13 +56,14 @@ export default function AuthForm({ locale, next }: { locale: string; next?: stri
           role: 'client',
         });
       }
-    }
 
-    setStep('success');
-    setTimeout(() => {
-      router.push(next ?? `/${locale}/account`);
-      router.refresh();
-    }, 800);
+      setStep('success');
+      const isNewUser = !existing || !(existing as { name?: string }).name;
+      setTimeout(() => {
+        router.push(isNewUser ? `/${locale}/onboarding` : (next ?? `/${locale}/account`));
+        router.refresh();
+      }, 600);
+    }
     setLoading(false);
   }
 

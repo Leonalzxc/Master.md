@@ -26,10 +26,10 @@ export async function proxy(request: NextRequest) {
   // Refresh session — do NOT remove, required to keep tokens fresh
   const { data: { user } } = await supabase.auth.getUser();
 
-  // Protect /account routes
+  // Protect /account and /onboarding routes (require auth)
   const pathname = request.nextUrl.pathname;
-  if (/^\/(ru|ro)\/account/.test(pathname) && !user) {
-    const locale = pathname.match(/^\/(ru|ro)/)?.[1] ?? 'ru';
+  const locale = pathname.match(/^\/(ru|ro)/)?.[1] ?? 'ru';
+  if (/^\/(ru|ro)\/(account|onboarding)/.test(pathname) && !user) {
     const url = new URL(`/${locale}/auth`, request.url);
     url.searchParams.set('next', pathname);
     return NextResponse.redirect(url);
