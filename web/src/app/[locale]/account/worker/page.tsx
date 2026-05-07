@@ -52,8 +52,8 @@ export default async function WorkerDashboard({ params }: Props) {
           <div className="container flex items-center justify-between gap-4 flex-wrap">
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <Link href={`/${locale}/account`} className="text-sm" style={{ color: 'var(--text-muted)', textDecoration: 'none' }}>
-                  ← {locale === 'ru' ? 'Аккаунт' : 'Cont'}
+                <Link href={`/${locale}/account/profile`} className="text-sm" style={{ color: 'var(--text-muted)', textDecoration: 'none' }}>
+                  👤 {locale === 'ru' ? 'Мой профиль' : 'Profilul meu'}
                 </Link>
               </div>
               <h1 className="font-bold text-2xl" style={{ fontFamily: 'var(--font-display)', color: 'var(--text)' }}>
