@@ -4,6 +4,7 @@ import { NextIntlClientProvider } from 'next-intl';
 import { getMessages } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { routing } from '@/i18n/routing';
+import NavigationProgress from '@/components/layout/NavigationProgress';
 import '../globals.css';
 
 const dmSans = DM_Sans({
@@ -44,6 +45,7 @@ export default async function LocaleLayout({ children, params }: Props) {
     <html lang={locale} className={`${dmSans.variable} ${outfit.variable}`}>
       <body className="min-h-screen flex flex-col">
         <NextIntlClientProvider messages={messages}>
+          <NavigationProgress />
           {children}
         </NextIntlClientProvider>
       </body>
