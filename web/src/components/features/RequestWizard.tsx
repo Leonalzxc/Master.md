@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { CATEGORY_LABELS_RU, CATEGORY_ICONS, CITIES, AREAS, type Category } from '@/lib/mock/data';
+import { CATEGORY_LABELS_RU, CATEGORY_ICONS, type Category } from '@/lib/mock/data';
 import { createJob } from '@/app/actions/createJob';
+import LocationPicker from './LocationPicker';
 
 const STEPS = ['Категория', 'Описание', 'Место'];
 
@@ -11,7 +12,8 @@ interface FormData {
   description: string;
   urgent: boolean;
   needsQuote: boolean;
-  city: string;
+  lat: number | null;
+  lng: number | null;
   area: string;
   budget: string;
 }
@@ -21,7 +23,8 @@ const INITIAL: FormData = {
   description: '',
   urgent: false,
   needsQuote: false,
-  city: '',
+  lat: null,
+  lng: null,
   area: '',
   budget: '',
 };
@@ -45,10 +48,8 @@ export default function RequestWizard({ locale }: Props) {
     if (step === 0 && !form.category) e.category = locale === 'ru' ? 'Выберите категорию' : 'Alegeți categoria';
     if (step === 1 && form.description.trim().length < 20)
       e.description = locale === 'ru' ? 'Минимум 20 символов' : 'Minim 20 caractere';
-    if (step === 2) {
-      if (!form.city) e.city = locale === 'ru' ? 'Укажите город' : 'Indicați orașul';
-      if (!form.area) e.area = locale === 'ru' ? 'Укажите район' : 'Indicați sectorul';
-    }
+    if (step === 2 && form.lat === null)
+      e.lat = locale === 'ru' ? 'Отметьте место на карте' : 'Marcați locul pe hartă';
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -70,8 +71,10 @@ export default function RequestWizard({ locale }: Props) {
       await createJob({
         category: form.category as string,
         description: form.description,
-        city: form.city,
-        area: form.area,
+        city: 'Бельцы',
+        area: form.area || 'Бельцы',
+        lat: form.lat!,
+        lng: form.lng!,
         budget: form.budget,
         urgent: form.urgent,
         needsQuote: form.needsQuote,
@@ -123,7 +126,9 @@ export default function RequestWizard({ locale }: Props) {
             className="btn-primary"
             style={{ minWidth: 180, opacity: loading ? 0.7 : 1 }}
           >
-            {loading ? (locale === 'ru' ? 'Публикуем...' : 'Se publică...') : `📤 ${locale === 'ru' ? 'Опубликовать заявку' : 'Publică cererea'}`}
+            {loading
+              ? (locale === 'ru' ? 'Публикуем...' : 'Se publică...')
+              : `📤 ${locale === 'ru' ? 'Опубликовать заявку' : 'Publică cererea'}`}
           </button>
         )}
       </div>
@@ -236,33 +241,38 @@ function Step2Description({ form, set, errors, locale }: StepProps) {
 
 /* ── Step 3 ───────────────────────────────────────────────────── */
 function Step3Location({ form, set, errors, locale }: StepProps) {
-  const areas = form.city ? (AREAS[form.city] || []) : [];
-
   return (
     <div className="flex flex-col gap-4">
-      <h2 className="font-semibold text-lg" style={{ color: 'var(--text)' }}>
-        {locale === 'ru' ? 'Где и бюджет?' : 'Unde și bugetul?'}
-      </h2>
-
       <div>
-        <label className="field-label">{locale === 'ru' ? 'Город *' : 'Oraș *'}</label>
-        <select value={form.city} onChange={(e) => { set('city', e.target.value); set('area', ''); }} className="field-input">
-          <option value="">{locale === 'ru' ? 'Выберите город' : 'Alegeți orașul'}</option>
-          {CITIES.map((c) => <option key={c} value={c}>{c}</option>)}
-        </select>
-        {errors.city && <FieldError>{errors.city}</FieldError>}
+        <h2 className="font-semibold text-lg" style={{ color: 'var(--text)' }}>
+          {locale === 'ru' ? 'Где нужна работа?' : 'Unde este nevoie de lucru?'}
+        </h2>
+        <div className="flex items-center gap-2 mt-1">
+          <span
+            className="text-xs font-semibold px-2 py-0.5 rounded-full"
+            style={{ background: 'var(--accent-dim)', color: 'var(--accent)' }}
+          >
+            📍 Бельцы
+          </span>
+          {form.area && (
+            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+              · {form.area}
+            </span>
+          )}
+        </div>
       </div>
 
-      {form.city && (
-        <div>
-          <label className="field-label">{locale === 'ru' ? 'Район *' : 'Sector *'}</label>
-          <select value={form.area} onChange={(e) => set('area', e.target.value)} className="field-input">
-            <option value="">{locale === 'ru' ? 'Выберите район' : 'Alegeți sectorul'}</option>
-            {areas.map((a) => <option key={a} value={a}>{a}</option>)}
-          </select>
-          {errors.area && <FieldError>{errors.area}</FieldError>}
-        </div>
-      )}
+      <LocationPicker
+        lat={form.lat}
+        lng={form.lng}
+        locale={locale}
+        onPick={(lat, lng, area) => {
+          set('lat', lat);
+          set('lng', lng);
+          set('area', area);
+        }}
+      />
+      {errors.lat && <FieldError>{errors.lat}</FieldError>}
 
       <div>
         <label className="field-label">{locale === 'ru' ? 'Бюджет (необязательно)' : 'Buget (opțional)'}</label>

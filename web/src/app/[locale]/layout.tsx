@@ -24,7 +24,7 @@ export const metadata: Metadata = {
     template: '%s | MASTER Moldova',
     default: 'MASTER — Найдите мастера в Молдове',
   },
-  description: 'Биржа мастеров для ремонта и строительства в Кишинёве и Бельцах. Опубликуйте заявку и получите отклики за 15 минут.',
+  description: 'Биржа мастеров для ремонта и строительства в Бельцах. Опубликуйте заявку и получите отклики за 15 минут.',
 };
 
 type Props = {
@@ -43,6 +43,16 @@ export default async function LocaleLayout({ children, params }: Props) {
 
   return (
     <html lang={locale} className={`${dmSans.variable} ${outfit.variable}`}>
+      <head>
+        {/* View Transitions API — injected raw to bypass PostCSS */}
+        <style dangerouslySetInnerHTML={{ __html: `
+          @view-transition { navigation: auto; }
+          ::view-transition-old(root) { animation: 150ms ease-in both _vt-out; }
+          ::view-transition-new(root) { animation: 280ms cubic-bezier(.22,1,.36,1) both _vt-in; }
+          @keyframes _vt-out { to { opacity: 0; transform: translateY(-5px); } }
+          @keyframes _vt-in  { from { opacity: 0; transform: translateY(12px); } }
+        `}} />
+      </head>
       <body className="min-h-screen flex flex-col">
         <NextIntlClientProvider messages={messages}>
           <NavigationProgress />

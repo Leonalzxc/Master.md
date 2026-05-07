@@ -98,7 +98,7 @@ function HeroSection({ locale }: { locale: string }) {
             }}
           >
             <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#38bdf8', display: 'inline-block' }} />
-            {locale === 'ru' ? 'Молдова · Кишинёв · Бельцы' : 'Moldova · Chișinău · Bălți'}
+            {locale === 'ru' ? 'Бельцы, Молдова' : 'Bălți, Moldova'}
           </div>
 
           <h1

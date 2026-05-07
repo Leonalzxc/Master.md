@@ -190,11 +190,10 @@ export const MOCK_WORKERS: Worker[] = [
   },
 ];
 
-export const CITIES = ['Кишинёв', 'Бельцы'];
+export const CITIES = ['Бельцы'];
 
 export const AREAS: Record<string, string[]> = {
-  'Кишинёв': ['Центр', 'Ботаника', 'Рышкановка', 'Буюканы', 'Чеканы', 'Телецентр', 'Скулянка', 'Данчены'],
-  'Бельцы': ['Центр', 'Любой район Бельцы'],
+  'Бельцы': ['Центр', 'Северная', 'Южная', 'Молодёжная', 'Флора', 'Пэмынтень'],
 };
 
 export const CATEGORY_LABELS_RU: Record<Category, string> = {

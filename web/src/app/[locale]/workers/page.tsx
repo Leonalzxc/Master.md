@@ -67,9 +67,28 @@ export default async function WorkersPage({ params, searchParams }: Props) {
               Ошибка загрузки: {error.message}
             </div>
           )}
-          <div className="flex gap-6 flex-col lg:flex-row">
-            <aside style={{ width: '100%', maxWidth: 240, flexShrink: 0 }}>
-              <FilterPanel locale={locale} selectedCity={city} selectedCategory={category as Category | undefined} />
+          <div className="flex gap-6 items-start flex-col md:flex-row">
+            <aside style={{ width: '100%', flexShrink: 0 }} className="md:w-[220px] md:max-w-[220px]">
+              {/* Mobile: collapsible */}
+              <details className="md:hidden">
+                <summary
+                  className="field-input flex items-center justify-between cursor-pointer select-none"
+                  style={{ listStyle: 'none' }}
+                >
+                  <span className="font-semibold text-sm" style={{ color: 'var(--text)' }}>
+                    🔍 {locale === 'ru' ? 'Фильтры' : 'Filtre'}
+                    {(city || category) ? ' ●' : ''}
+                  </span>
+                  <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>▼</span>
+                </summary>
+                <div className="mt-2">
+                  <FilterPanel locale={locale} selectedCity={city} selectedCategory={category as Category | undefined} />
+                </div>
+              </details>
+              {/* Desktop: always visible */}
+              <div className="hidden md:block">
+                <FilterPanel locale={locale} selectedCity={city} selectedCategory={category as Category | undefined} />
+              </div>
             </aside>
             <div className="flex-1">
               {workers.length === 0 ? (
