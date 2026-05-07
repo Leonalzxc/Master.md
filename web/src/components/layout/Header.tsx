@@ -3,7 +3,9 @@
 import Link from 'next/link';
 import { useTranslations, useLocale } from 'next-intl';
 import { usePathname, useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { createClient } from '@/lib/supabase/client';
+import type { User } from '@supabase/supabase-js';
 import { cn } from '@/lib/utils/cn';
 
 export default function Header() {
@@ -12,6 +14,16 @@ export default function Header() {
   const pathname = usePathname();
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data }) => setUser(data.user));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
+      setUser(session?.user ?? null);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
 
   const otherLocale = locale === 'ru' ? 'ro' : 'ru';
   const switchLangPath = pathname.replace(`/${locale}`, `/${otherLocale}`);
@@ -75,14 +87,25 @@ export default function Header() {
             {otherLocale.toUpperCase()}
           </Link>
 
-          {/* Login */}
-          <Link
-            href={`/${locale}/auth`}
-            className="hidden md:flex btn-secondary text-sm"
-            style={{ height: 36, padding: '0 16px', fontSize: 14 }}
-          >
-            {t('login')}
-          </Link>
+          {/* Login / Account */}
+          {user ? (
+            <Link
+              href={`/${locale}/account`}
+              className="hidden md:flex items-center justify-center rounded-full font-bold text-white text-sm"
+              style={{ width: 36, height: 36, background: 'linear-gradient(135deg, var(--accent), var(--accent-deep))', flexShrink: 0 }}
+              title={locale === 'ru' ? 'Аккаунт' : 'Cont'}
+            >
+              {(user.phone ?? '?').slice(-2)}
+            </Link>
+          ) : (
+            <Link
+              href={`/${locale}/auth`}
+              className="hidden md:flex btn-secondary text-sm"
+              style={{ height: 36, padding: '0 16px', fontSize: 14 }}
+            >
+              {t('login')}
+            </Link>
+          )}
 
           {/* CTA */}
           <Link
@@ -147,14 +170,25 @@ export default function Header() {
             >
               {t('forWorkers')}
             </Link>
-            <Link
-              href={`/${locale}/auth`}
-              className="py-2 text-sm font-medium"
-              style={{ color: 'var(--text-secondary)' }}
-              onClick={() => setMenuOpen(false)}
-            >
-              {t('login')}
-            </Link>
+            {user ? (
+              <Link
+                href={`/${locale}/account`}
+                className="py-2 text-sm font-medium"
+                style={{ color: 'var(--accent)' }}
+                onClick={() => setMenuOpen(false)}
+              >
+                {locale === 'ru' ? 'Мой аккаунт' : 'Contul meu'}
+              </Link>
+            ) : (
+              <Link
+                href={`/${locale}/auth`}
+                className="py-2 text-sm font-medium"
+                style={{ color: 'var(--text-secondary)' }}
+                onClick={() => setMenuOpen(false)}
+              >
+                {t('login')}
+              </Link>
+            )}
           </div>
         </div>
       )}
