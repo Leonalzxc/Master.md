@@ -12,9 +12,12 @@ import type { Job, Bid, Profile, ProfileWorker } from '@/lib/supabase/types';
 
 type Props = { params: Promise<{ locale: string; id: string }> };
 
+type WorkerWithProfile = Pick<Profile, 'id' | 'name'> & {
+  profiles_worker: Pick<ProfileWorker, 'is_pro' | 'verified' | 'rating_avg' | 'rating_count'> | null;
+};
+
 type BidRow = Bid & {
-  worker: Pick<Profile, 'id' | 'name'> | null;
-  worker_profile: Pick<ProfileWorker, 'is_pro' | 'verified' | 'rating_avg' | 'rating_count'> | null;
+  worker: WorkerWithProfile | null;
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -37,7 +40,7 @@ export default async function JobDetailPage({ params }: Props) {
 
   const { data: rawBids } = await supabase
     .from('bids')
-    .select('*, worker:profiles(id, name), worker_profile:profiles_worker(is_pro, verified, rating_avg, rating_count)')
+    .select('*, worker:profiles(id, name, profiles_worker(is_pro, verified, rating_avg, rating_count))')
     .eq('job_id', id)
     .order('created_at', { ascending: true });
 
@@ -174,7 +177,7 @@ function BidCard({ bid, locale }: { bid: BidRow; locale: string }) {
   const startDate = bid.start_date
     ? new Date(bid.start_date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })
     : null;
-  const pw = bid.worker_profile;
+  const pw = bid.worker?.profiles_worker ?? null;
 
   return (
     <div

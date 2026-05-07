@@ -39,7 +39,7 @@ export default async function WorkerProfilePage({ params }: Props) {
 
   const { data: rr } = await supabase
     .from('reviews')
-    .select('*, author:profiles(name), job:jobs(category)')
+    .select('*, author:profiles!reviews_author_id_fkey(name), job:jobs(category)')
     .eq('worker_id', id)
     .order('created_at', { ascending: false });
   const reviews = (rr ?? []) as unknown as ReviewRow[];
