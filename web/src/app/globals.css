@@ -1,63 +1,50 @@
 @import "tailwindcss";
 
-/* ─── Design Tokens (from tokens.mvp.json) ─────────────────────── */
+/* ─── Design Tokens ─────────────────────────────────────────────── */
 :root {
-  /* Colors */
-  --bg-deep:            #eef2f7;
-  --bg-elevated:        #ffffff;
-  --surface-2:          #f8fafc;
-  --surface-subtle:     rgba(15,23,42,.04);
+  --bg-deep:             #eef2f7;
+  --bg-elevated:         #ffffff;
+  --surface-2:           #f8fafc;
+  --surface-subtle:      rgba(15,23,42,.04);
 
-  --glass-border:       rgba(15,23,42,.09);
-  --glass-border-strong:rgba(15,23,42,.14);
+  --glass-border:        rgba(15,23,42,.08);
+  --glass-border-strong: rgba(15,23,42,.13);
 
-  --text:               #0f172a;
-  --text-secondary:     #475569;
-  --text-muted:         #64748b;
+  --text:                #0f172a;
+  --text-secondary:      #475569;
+  --text-muted:          #64748b;
 
-  --accent:             #0ea5e9;
-  --accent-deep:        #0284c7;
-  --accent-dim:         rgba(14,165,233,.12);
+  --accent:              #0ea5e9;
+  --accent-deep:         #0284c7;
+  --accent-dim:          rgba(14,165,233,.11);
+  --accent-glow:         rgba(14,165,233,.25);
 
-  --success:            #16a34a;
-  --success-deep:       #15803d;
-  --warning:            #d97706;
-  --danger:             #e11d48;
-  --danger-bg:          rgba(225,29,72,.08);
-  --danger-border:      rgba(225,29,72,.35);
+  --success:             #16a34a;
+  --success-dim:         rgba(22,163,74,.1);
+  --warning:             #d97706;
+  --danger:              #e11d48;
+  --danger-bg:           rgba(225,29,72,.07);
+  --danger-border:       rgba(225,29,72,.3);
 
-  --scrim:              rgba(15,23,42,.4);
+  --scrim:               rgba(15,23,42,.4);
 
-  /* Typography */
-  --font-sans:          'DM Sans', system-ui, -apple-system, sans-serif;
-  --font-display:       'Outfit', 'DM Sans', system-ui, sans-serif;
+  --font-sans:           'DM Sans', system-ui, -apple-system, sans-serif;
+  --font-display:        'Outfit', 'DM Sans', system-ui, sans-serif;
 
-  /* Spacing (8pt grid) */
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 24px;
-  --space-6: 32px;
-  --space-8: 48px;
-
-  /* Radius */
   --radius-xs: 6px;
   --radius-sm: 10px;
   --radius-md: 14px;
   --radius-lg: 20px;
-  --radius-xl: 24px;
+  --radius-xl: 26px;
 
-  /* Shadows */
   --shadow-xs:   0 1px 2px rgba(15,23,42,.05);
-  --shadow-sm:   0 1px 3px rgba(15,23,42,.06);
-  --shadow-md:   0 4px 16px rgba(15,23,42,.08);
-  --shadow-soft: 0 20px 48px rgba(15,23,42,.08);
+  --shadow-sm:   0 1px 4px rgba(15,23,42,.06), 0 1px 2px rgba(15,23,42,.04);
+  --shadow-md:   0 4px 20px rgba(15,23,42,.09), 0 1px 4px rgba(15,23,42,.05);
+  --shadow-lg:   0 12px 40px rgba(15,23,42,.12), 0 2px 8px rgba(15,23,42,.06);
 
-  /* Motion */
-  --ease-out: cubic-bezier(.22,1,.36,1);
+  --ease-out:    cubic-bezier(.22,1,.36,1);
+  --ease-spring: cubic-bezier(.34,1.56,.64,1);
 
-  /* Layout */
   --content-max: 1120px;
   --header-h:    4.75rem;
 }
@@ -68,8 +55,27 @@
   --font-sans: var(--font-sans);
 }
 
-/* ─── Base ────────────────────────────────────────────────────── */
-*, *::before, *::after { box-sizing: border-box; }
+/* ─── View Transitions (smooth page navigation) ─────────────────── */
+@view-transition {
+  navigation: auto;
+}
+
+::view-transition-old(root) {
+  animation: 160ms ease-in both vt-out;
+}
+::view-transition-new(root) {
+  animation: 280ms var(--ease-out) both vt-in;
+}
+
+@keyframes vt-out {
+  to { opacity: 0; transform: translateY(-4px); }
+}
+@keyframes vt-in {
+  from { opacity: 0; transform: translateY(12px); }
+}
+
+/* ─── Base ────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 html { scroll-behavior: smooth; }
 
@@ -80,16 +86,28 @@ body {
   font-size: 15px;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* ─── Utility classes ──────────────────────────────────────────── */
+/* ─── Card ───────────────────────────────────────────────────────── */
 .card {
   background: var(--bg-elevated);
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
+  transition: box-shadow 200ms var(--ease-out), border-color 200ms var(--ease-out), transform 200ms var(--ease-out);
 }
 
+.card-interactive {
+  cursor: pointer;
+}
+.card-interactive:hover {
+  box-shadow: var(--shadow-md);
+  border-color: rgba(14,165,233,.2);
+  transform: translateY(-2px);
+}
+
+/* ─── Buttons ────────────────────────────────────────────────────── */
 .btn-primary {
   display: inline-flex;
   align-items: center;
@@ -97,19 +115,24 @@ body {
   gap: 8px;
   height: 44px;
   padding: 0 20px;
-  background: var(--accent);
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-deep) 100%);
   color: #fff;
   border-radius: var(--radius-md);
   font-weight: 600;
   font-size: 15px;
-  transition: background 150ms var(--ease-out), transform 150ms var(--ease-out);
+  transition: opacity 150ms, transform 150ms var(--ease-out), box-shadow 150ms;
   cursor: pointer;
   border: none;
   text-decoration: none;
+  box-shadow: 0 2px 8px var(--accent-glow);
 }
-.btn-primary:hover { background: var(--accent-deep); }
-.btn-primary:active { transform: scale(.98); }
-.btn-primary:disabled { opacity: .45; cursor: not-allowed; }
+.btn-primary:hover {
+  opacity: .9;
+  box-shadow: 0 4px 16px var(--accent-glow);
+  transform: translateY(-1px);
+}
+.btn-primary:active { transform: scale(.97); box-shadow: none; }
+.btn-primary:disabled { opacity: .4; cursor: not-allowed; transform: none; box-shadow: none; }
 
 .btn-secondary {
   display: inline-flex;
@@ -124,12 +147,19 @@ body {
   border-radius: var(--radius-md);
   font-weight: 600;
   font-size: 15px;
-  transition: border-color 150ms, background 150ms;
+  transition: border-color 150ms, background 150ms, transform 150ms var(--ease-out);
   cursor: pointer;
   text-decoration: none;
 }
-.btn-secondary:hover { background: var(--surface-subtle); border-color: var(--accent); }
+.btn-secondary:hover {
+  background: var(--surface-subtle);
+  border-color: var(--accent);
+  color: var(--accent);
+  transform: translateY(-1px);
+}
+.btn-secondary:active { transform: scale(.97); }
 
+/* ─── Layout ─────────────────────────────────────────────────────── */
 .container {
   width: 100%;
   max-width: var(--content-max);
@@ -138,41 +168,36 @@ body {
 }
 @media (min-width: 768px) { .container { padding: 0 24px; } }
 
+/* ─── Hero button variant ────────────────────────────────────────── */
 .hero-btn-outline {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   height: 52px;
   padding: 0 28px;
-  border: 1.5px solid rgba(255,255,255,0.3);
+  border: 1.5px solid rgba(255,255,255,.28);
   border-radius: var(--radius-md);
   color: white;
   font-weight: 600;
   font-size: 16px;
   text-decoration: none;
-  transition: border-color 150ms var(--ease-out), background 150ms var(--ease-out);
+  transition: border-color 200ms, background 200ms, transform 200ms var(--ease-out);
+  backdrop-filter: blur(4px);
 }
 .hero-btn-outline:hover {
-  border-color: rgba(255,255,255,0.7);
-  background: rgba(255,255,255,0.08);
+  border-color: rgba(255,255,255,.6);
+  background: rgba(255,255,255,.1);
+  transform: translateY(-1px);
 }
 
-.category-card {
-  transition: border-color 150ms var(--ease-out), box-shadow 150ms var(--ease-out), transform 150ms var(--ease-out);
-}
-.category-card:hover {
-  border-color: var(--accent) !important;
-  box-shadow: 0 4px 20px rgba(14,165,233,.15);
-  transform: translateY(-2px);
-}
-
-/* ─── Form fields ──────────────────────────────────────────────── */
+/* ─── Form fields ────────────────────────────────────────────────── */
 .field-label {
   display: block;
   font-size: 13px;
   font-weight: 600;
   margin-bottom: 6px;
   color: var(--text-secondary);
+  letter-spacing: .01em;
 }
 
 .field-input {
@@ -185,32 +210,78 @@ body {
   color: var(--text);
   font-size: 15px;
   font-family: var(--font-sans);
-  transition: border-color 150ms;
+  transition: border-color 150ms, box-shadow 150ms;
   outline: none;
 }
 
 textarea.field-input {
   height: auto;
-  padding: 12px 14px;
+  padding: 11px 14px;
+  line-height: 1.6;
 }
 
 .field-input:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-dim);
 }
-
 .field-input::placeholder { color: var(--text-muted); }
-
 .field-input:disabled {
   background: var(--surface-2);
   color: var(--text-muted);
   cursor: not-allowed;
 }
-
 select.field-input { cursor: pointer; }
 
-/* ─── Card hover lift ──────────────────────────────────────────── */
+/* ─── Hover lift ─────────────────────────────────────────────────── */
+.hover-lift {
+  transition: box-shadow 200ms var(--ease-out), transform 200ms var(--ease-out);
+  cursor: pointer;
+}
 .hover-lift:hover {
   box-shadow: var(--shadow-md);
-  transform: translateY(-1px);
+  transform: translateY(-2px);
 }
+
+/* ─── Category card ──────────────────────────────────────────────── */
+.category-card {
+  transition: border-color 200ms var(--ease-out), box-shadow 200ms var(--ease-out), transform 200ms var(--ease-out);
+}
+.category-card:hover {
+  border-color: var(--accent) !important;
+  box-shadow: 0 4px 20px rgba(14,165,233,.14);
+  transform: translateY(-3px);
+}
+
+/* ─── Skeleton ───────────────────────────────────────────────────── */
+.skeleton {
+  background: linear-gradient(90deg, var(--surface-2) 25%, rgba(14,165,233,.06) 50%, var(--surface-2) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s ease infinite;
+  border-radius: var(--radius-sm);
+}
+@keyframes skeleton-shimmer {
+  from { background-position: 200% 0; }
+  to   { background-position: -200% 0; }
+}
+
+/* ─── Fade-in utility ────────────────────────────────────────────── */
+.fade-in {
+  animation: fade-in 300ms var(--ease-out) both;
+}
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+}
+
+/* ─── Slide-up utility ───────────────────────────────────────────── */
+.slide-up {
+  animation: slide-up 350ms var(--ease-out) both;
+}
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(20px); }
+}
+
+/* ─── Stagger helpers ────────────────────────────────────────────── */
+.stagger-1 { animation-delay: 60ms; }
+.stagger-2 { animation-delay: 120ms; }
+.stagger-3 { animation-delay: 180ms; }
+.stagger-4 { animation-delay: 240ms; }
