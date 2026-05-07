@@ -24,6 +24,9 @@ export default async function AccountPage({ params }: Props) {
   const { data: rawProfile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
   const profile = rawProfile as Profile | null;
 
+  if (profile?.role === 'worker') redirect(`/${locale}/account/worker`);
+  if (profile?.role === 'client') redirect(`/${locale}/account/client`);
+
   const initials = profile?.name
     ? profile.name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()
     : (profile?.phone ?? '?').slice(-2);
@@ -103,9 +106,7 @@ export default async function AccountPage({ params }: Props) {
               <Row label={locale === 'ru' ? 'Телефон' : 'Telefon'} value={profile?.phone ?? user.phone ?? '—'} />
               <Row label={locale === 'ru' ? 'Имя' : 'Nume'} value={profile?.name ?? '—'} />
               <Row label={locale === 'ru' ? 'Роль' : 'Rol'} value={
-                profile?.role === 'worker' ? (locale === 'ru' ? 'Мастер' : 'Meșter') :
-                profile?.role === 'admin'  ? 'Admin' :
-                (locale === 'ru' ? 'Заказчик' : 'Client')
+                profile?.role === 'admin' ? 'Admin' : (locale === 'ru' ? 'Не задана' : 'Nedefinit')
               } />
               <Row label={locale === 'ru' ? 'Город' : 'Oraș'} value={profile?.city ?? '—'} />
             </div>

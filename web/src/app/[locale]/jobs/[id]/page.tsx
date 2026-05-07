@@ -6,6 +6,7 @@ import Footer from '@/components/layout/Footer';
 import Badge from '@/components/ui/Badge';
 import RatingStars from '@/components/ui/RatingStars';
 import BidForm from '@/components/features/BidForm';
+import SelectWorkerButton from '@/components/features/SelectWorkerButton';
 import { createClient } from '@/lib/supabase/server';
 import { CATEGORY_LABELS_RU, CATEGORY_ICONS, type Category } from '@/lib/mock/data';
 import type { Job, Bid, Profile, ProfileWorker } from '@/lib/supabase/types';
@@ -33,10 +34,14 @@ export default async function JobDetailPage({ params }: Props) {
   const { locale, id } = await params;
   const supabase = await createClient();
 
+  const { data: { user } } = await supabase.auth.getUser();
+
   const { data: rawJob, error: jobError } = await supabase
     .from('jobs').select('*').eq('id', id).single();
   const job = rawJob as Job | null;
   if (jobError || !job) notFound();
+
+  const isOwner = !!(user && (job as unknown as { client_id: string }).client_id === user.id);
 
   const { data: rawBids } = await supabase
     .from('bids')
@@ -136,7 +141,7 @@ export default async function JobDetailPage({ params }: Props) {
                 ) : (
                   <div className="flex flex-col gap-4">
                     {bids.map((bid) => (
-                      <BidCard key={bid.id} bid={bid} locale={locale} />
+                      <BidCard key={bid.id} bid={bid} locale={locale} isOwner={isOwner && job.status === 'active'} jobId={id} />
                     ))}
                   </div>
                 )}
@@ -170,7 +175,7 @@ export default async function JobDetailPage({ params }: Props) {
   );
 }
 
-function BidCard({ bid, locale }: { bid: BidRow; locale: string }) {
+function BidCard({ bid, locale, isOwner, jobId }: { bid: BidRow; locale: string; isOwner?: boolean; jobId: string }) {
   const isSelected = bid.status === 'selected';
   const workerName = bid.worker?.name ?? 'Мастер';
   const initials = workerName.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase();
@@ -231,7 +236,7 @@ function BidCard({ bid, locale }: { bid: BidRow; locale: string }) {
       </p>
 
       {!isSelected && (
-        <div className="flex justify-end">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
           <Link
             href={`/${locale}/workers/${bid.worker?.id ?? ''}`}
             className="btn-secondary"
@@ -239,6 +244,15 @@ function BidCard({ bid, locale }: { bid: BidRow; locale: string }) {
           >
             {locale === 'ru' ? 'Профиль мастера' : 'Profilul meșterului'}
           </Link>
+          {isOwner && bid.worker && (
+            <SelectWorkerButton
+              jobId={jobId}
+              bidId={bid.id}
+              workerId={bid.worker.id}
+              workerName={bid.worker.name ?? 'Мастер'}
+              locale={locale}
+            />
+          )}
         </div>
       )}
 
