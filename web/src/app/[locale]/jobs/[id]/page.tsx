@@ -150,21 +150,46 @@ export default async function JobDetailPage({ params }: Props) {
 
             <aside style={{ width: '100%', maxWidth: 300, flexShrink: 0 }}>
               <div className="card p-5 flex flex-col gap-4 sticky top-24">
-                <h3 className="font-semibold" style={{ color: 'var(--text)' }}>
-                  {locale === 'ru' ? 'Вы мастер?' : 'Ești meșter?'}
-                </h3>
-                <p className="text-sm" style={{ color: 'var(--text-muted)', lineHeight: 1.6 }}>
-                  {locale === 'ru'
-                    ? 'Войдите и отправьте свой отклик с ценой и сроками.'
-                    : 'Autentifică-te și trimite oferta ta cu preț și termene.'}
-                </p>
-                <BidForm jobId={id} locale={locale} />
-                <div
-                  className="rounded-xl p-3 text-xs text-center"
-                  style={{ background: 'var(--accent-dim)', color: 'var(--accent)' }}
-                >
-                  🔒 {locale === 'ru' ? 'Контакты заказчика открываются только при выборе мастера' : 'Contactele clientului se deschid doar la selectarea meșterului'}
-                </div>
+                {isOwner ? (
+                  <>
+                    <h3 className="font-semibold" style={{ color: 'var(--text)' }}>
+                      {locale === 'ru' ? 'Управление заявкой' : 'Gestionare cerere'}
+                    </h3>
+                    <div className="flex flex-col gap-2 text-sm" style={{ color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                      <p>💬 {bids.length} {locale === 'ru' ? bidsLabel(bids.length) : `ofert${bids.length === 1 ? 'ă' : 'e'}`}</p>
+                      <p style={{ color: job.status === 'active' ? 'var(--success)' : 'var(--text-muted)' }}>
+                        ● {locale === 'ru'
+                          ? (job.status === 'active' ? 'Активна' : job.status === 'in_progress' ? 'В работе' : job.status)
+                          : (job.status === 'active' ? 'Activă' : job.status === 'in_progress' ? 'În lucru' : job.status)}
+                      </p>
+                    </div>
+                    <Link
+                      href={`/${locale}/account/client`}
+                      className="btn-secondary text-center"
+                      style={{ fontSize: 13, height: 36 }}
+                    >
+                      {locale === 'ru' ? '← Мои заявки' : '← Cererile mele'}
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    <h3 className="font-semibold" style={{ color: 'var(--text)' }}>
+                      {locale === 'ru' ? 'Вы мастер?' : 'Ești meșter?'}
+                    </h3>
+                    <p className="text-sm" style={{ color: 'var(--text-muted)', lineHeight: 1.6 }}>
+                      {locale === 'ru'
+                        ? 'Войдите и отправьте свой отклик с ценой и сроками.'
+                        : 'Autentifică-te și trimite oferta ta cu preț și termene.'}
+                    </p>
+                    <BidForm jobId={id} locale={locale} />
+                    <div
+                      className="rounded-xl p-3 text-xs text-center"
+                      style={{ background: 'var(--accent-dim)', color: 'var(--accent)' }}
+                    >
+                      🔒 {locale === 'ru' ? 'Контакты заказчика открываются только при выборе мастера' : 'Contactele clientului se deschid doar la selectarea meșterului'}
+                    </div>
+                  </>
+                )}
               </div>
             </aside>
           </div>
