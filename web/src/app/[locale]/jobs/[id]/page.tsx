@@ -113,7 +113,8 @@ export default async function JobDetailPage({ params }: Props) {
         </div>
 
         <div className="container" style={{ paddingTop: 28 }}>
-          <div className="flex flex-col lg:flex-row gap-6">
+          <div className="flex flex-col md:flex-row gap-6 items-start">
+            {/* Main content — left on desktop, top on mobile */}
             <div className="flex-1 flex flex-col gap-6">
               <div className="card p-6">
                 <h2 className="font-semibold text-base mb-3" style={{ color: 'var(--text)' }}>
@@ -128,7 +129,6 @@ export default async function JobDetailPage({ params }: Props) {
                 <h2 className="font-semibold text-base mb-4" style={{ color: 'var(--text)' }}>
                   {locale === 'ru' ? 'Отклики мастеров' : 'Oferte meșteri'}{bids.length > 0 && ` (${bids.length})`}
                 </h2>
-
                 {bids.length === 0 ? (
                   <div className="text-center py-8">
                     <div className="text-3xl mb-2">⏳</div>
@@ -148,7 +148,8 @@ export default async function JobDetailPage({ params }: Props) {
               </div>
             </div>
 
-            <aside style={{ width: '100%', maxWidth: 300, flexShrink: 0 }}>
+            {/* Sidebar — right on desktop, bottom on mobile */}
+            <aside style={{ width: '100%', flexShrink: 0 }} className="md:w-[280px] md:max-w-[280px]">
               <div className="card p-5 flex flex-col gap-4 sticky top-24">
                 {isOwner ? (
                   <>
@@ -157,12 +158,33 @@ export default async function JobDetailPage({ params }: Props) {
                     </h3>
                     <div className="flex flex-col gap-2 text-sm" style={{ color: 'var(--text-secondary)', lineHeight: 1.6 }}>
                       <p>💬 {bids.length} {locale === 'ru' ? bidsLabel(bids.length) : `ofert${bids.length === 1 ? 'ă' : 'e'}`}</p>
-                      <p style={{ color: job.status === 'active' ? 'var(--success)' : 'var(--text-muted)' }}>
+                      <p style={{ color: job.status === 'active' ? 'var(--success)' : job.status === 'in_progress' ? 'var(--accent)' : 'var(--text-muted)' }}>
                         ● {locale === 'ru'
-                          ? (job.status === 'active' ? 'Активна' : job.status === 'in_progress' ? 'В работе' : job.status)
-                          : (job.status === 'active' ? 'Activă' : job.status === 'in_progress' ? 'În lucru' : job.status)}
+                          ? (job.status === 'active' ? 'Активна' : job.status === 'in_progress' ? 'В работе' : job.status === 'done' ? 'Завершена' : job.status)
+                          : (job.status === 'active' ? 'Activă' : job.status === 'in_progress' ? 'În lucru' : job.status === 'done' ? 'Finalizată' : job.status)}
                       </p>
                     </div>
+
+                    {/* CTA: leave review when work is in progress */}
+                    {job.status === 'in_progress' && (
+                      <Link
+                        href={`/${locale}/jobs/${id}/review`}
+                        className="btn-primary text-center"
+                        style={{ fontSize: 13, height: 40 }}
+                      >
+                        ✅ {locale === 'ru' ? 'Завершить и оставить отзыв' : 'Finalizează și lasă recenzie'}
+                      </Link>
+                    )}
+
+                    {job.status === 'done' && (
+                      <div
+                        className="rounded-xl p-3 text-sm text-center"
+                        style={{ background: 'var(--success-dim)', color: 'var(--success)', border: '1px solid rgba(22,163,74,.2)' }}
+                      >
+                        🎉 {locale === 'ru' ? 'Заявка завершена' : 'Cerere finalizată'}
+                      </div>
+                    )}
+
                     <Link
                       href={`/${locale}/account/client`}
                       className="btn-secondary text-center"

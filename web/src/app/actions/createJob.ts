@@ -9,6 +9,8 @@ export async function createJob(formData: {
   description: string;
   city: string;
   area: string;
+  lat: number;
+  lng: number;
   budget: string;
   urgent: boolean;
   needsQuote: boolean;
@@ -27,6 +29,8 @@ export async function createJob(formData: {
     description: formData.description.trim(),
     city: formData.city,
     area: formData.area,
+    lat: formData.lat,
+    lng: formData.lng,
     budget_min: budgetNum,
     urgent: formData.urgent,
     needs_quote: formData.needsQuote,

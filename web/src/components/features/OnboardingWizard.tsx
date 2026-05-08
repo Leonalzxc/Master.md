@@ -5,10 +5,9 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { CATEGORY_LABELS_RU, CATEGORY_ICONS, type Category } from '@/lib/mock/data';
 
-const CITIES = ['Кишинёв', 'Бельцы'];
+const CITIES = ['Бельцы'];
 const AREAS: Record<string, string[]> = {
-  'Кишинёв': ['Центр', 'Ботаника', 'Рышкановка', 'Чеканы', 'Буюканы', 'Телецентр', 'Скулянка', 'Чокана'],
-  'Бельцы': ['Центр', 'Северный', 'Южный'],
+  'Бельцы': ['Центр', 'Северная', 'Южная', 'Молодёжная', 'Флора', 'Пэмынтень', 'Весь город'],
 };
 const ALL_CATEGORIES = Object.keys(CATEGORY_LABELS_RU) as Category[];
 
@@ -29,7 +28,7 @@ interface State {
 export default function OnboardingWizard({ locale, userId }: { locale: string; userId: string }) {
   const [step, setStep] = useState<Step>(1);
   const [state, setState] = useState<State>({
-    name: '', role: null, categories: [], city: 'Кишинёв', areas: [], bio: '', experienceYrs: '', docFile: null,
+    name: '', role: null, categories: [], city: 'Бельцы', areas: [], bio: '', experienceYrs: '', docFile: null,
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');

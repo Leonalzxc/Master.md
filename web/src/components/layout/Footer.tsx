@@ -43,15 +43,7 @@ export default function Footer() {
             <ul className="space-y-2 text-sm">
               <li>
                 <Link
-                  href={`/${locale}/workers?city=chisinau`}
-                  className="hover:text-white transition-colors"
-                >
-                  {t('chisinau')}
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href={`/${locale}/workers?city=balti`}
+                  href={`/${locale}/workers`}
                   className="hover:text-white transition-colors"
                 >
                   {t('balti')}

@@ -49,33 +49,8 @@
   --header-h:    4.75rem;
 }
 
-@theme inline {
-  --color-background: var(--bg-deep);
-  --color-foreground: var(--text);
-  --font-sans: var(--font-sans);
-}
-
-/* ─── View Transitions (smooth page navigation) ─────────────────── */
-@view-transition {
-  navigation: auto;
-}
-
-::view-transition-old(root) {
-  animation: 160ms ease-in both vt-out;
-}
-::view-transition-new(root) {
-  animation: 280ms var(--ease-out) both vt-in;
-}
-
-@keyframes vt-out {
-  to { opacity: 0; transform: translateY(-4px); }
-}
-@keyframes vt-in {
-  from { opacity: 0; transform: translateY(12px); }
-}
-
 /* ─── Base ────────────────────────────────────────────────────────── */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*, *::before, *::after { box-sizing: border-box; }
 
 html { scroll-behavior: smooth; }
 
@@ -264,6 +239,15 @@ select.field-input { cursor: pointer; }
   to   { background-position: -200% 0; }
 }
 
+/* ─── Page enter (runs on every page mount) ──────────────────────── */
+main {
+  animation: page-enter 280ms var(--ease-out) both;
+}
+@keyframes page-enter {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 /* ─── Fade-in utility ────────────────────────────────────────────── */
 .fade-in {
   animation: fade-in 300ms var(--ease-out) both;
@@ -285,3 +269,8 @@ select.field-input { cursor: pointer; }
 .stagger-2 { animation-delay: 120ms; }
 .stagger-3 { animation-delay: 180ms; }
 .stagger-4 { animation-delay: 240ms; }
+
+/* ─── Filter details/summary ────────────────────────────────────── */
+details summary { list-style: none; }
+details summary::-webkit-details-marker { display: none; }
+details[open] summary span:last-child { transform: rotate(180deg); display: inline-block; }

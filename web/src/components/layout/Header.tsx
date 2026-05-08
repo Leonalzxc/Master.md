@@ -173,25 +173,25 @@ export default function Header() {
           {/* Avatar (all screen sizes) */}
           {avatarEl}
 
-          {/* Login if not authed */}
-          {!user && (
+          {/* Desktop-only: login + CTA — wrapped in a div so hidden/flex works (btn-* has display:inline-flex which overrides Tailwind's hidden) */}
+          <div className="hidden md:flex items-center gap-2">
+            {!user && (
+              <Link
+                href={`/${locale}/auth`}
+                className="btn-secondary text-sm"
+                style={{ height: 36, padding: '0 16px', fontSize: 14 }}
+              >{t('login')}</Link>
+            )}
             <Link
-              href={`/${locale}/auth`}
-              className="hidden md:flex btn-secondary text-sm"
-              style={{ height: 36, padding: '0 16px', fontSize: 14 }}
-            >{t('login')}</Link>
-          )}
-
-          {/* CTA */}
-          <Link
-            href={isWorker ? `/${locale}/jobs` : `/${locale}/request/new`}
-            className="btn-primary text-sm hidden md:flex"
-            style={{ height: 36, padding: '0 14px', fontSize: 13 }}
-          >
-            {isWorker
-              ? (locale === 'ru' ? 'Найти заявки →' : 'Găsește cereri →')
-              : t('createRequest')}
-          </Link>
+              href={isWorker ? `/${locale}/jobs` : `/${locale}/request/new`}
+              className="btn-primary text-sm"
+              style={{ height: 36, padding: '0 14px', fontSize: 13 }}
+            >
+              {isWorker
+                ? (locale === 'ru' ? 'Найти заявки →' : 'Găsește cereri →')
+                : t('createRequest')}
+            </Link>
+          </div>
 
           {/* Burger */}
           <button

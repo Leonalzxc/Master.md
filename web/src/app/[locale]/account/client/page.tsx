@@ -9,9 +9,9 @@ import { createClient } from '@/lib/supabase/server';
 import { CATEGORY_LABELS_RU, CATEGORY_ICONS, type Category } from '@/lib/mock/data';
 import type { Job } from '@/lib/supabase/types';
 
-type JobRow = Job & { bid_count: { count: number }[] };
+type Props = { params: Promise<{ locale: string }>; searchParams: Promise<{ reviewed?: string }> };
 
-type Props = { params: Promise<{ locale: string }> };
+type JobRow = Job & { bid_count: { count: number }[] };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
@@ -26,8 +26,9 @@ const STATUS_LABEL: Record<string, { ru: string; ro: string; color: string }> = 
   blocked:     { ru: 'Заблокирована',ro: 'Blocată',      color: 'var(--danger)' },
 };
 
-export default async function ClientDashboard({ params }: Props) {
+export default async function ClientDashboard({ params, searchParams }: Props) {
   const { locale } = await params;
+  const { reviewed } = await searchParams;
   const supabase = await createClient();
 
   const { data: { user } } = await supabase.auth.getUser();
@@ -66,6 +67,14 @@ export default async function ClientDashboard({ params }: Props) {
             </Link>
           </div>
         </div>
+
+        {reviewed === '1' && (
+          <div style={{ background: 'var(--success-dim)', borderBottom: '1px solid rgba(22,163,74,.2)', padding: '12px 0' }}>
+            <div className="container flex items-center gap-2 text-sm font-semibold" style={{ color: 'var(--success)' }}>
+              🎉 {locale === 'ru' ? 'Отзыв отправлен! Заявка завершена.' : 'Recenzia a fost trimisă! Cererea a fost finalizată.'}
+            </div>
+          </div>
+        )}
 
         <div className="container" style={{ paddingTop: 24 }}>
           {jobs.length === 0 ? (
@@ -138,13 +147,22 @@ export default async function ClientDashboard({ params }: Props) {
                         </Link>
                       )}
                       {job.status === 'in_progress' && (
-                        <Link
-                          href={`/${locale}/jobs/${job.id}`}
-                          className="btn-secondary"
-                          style={{ height: 38, padding: '0 14px', fontSize: 13 }}
-                        >
-                          {locale === 'ru' ? 'В работе →' : 'În lucru →'}
-                        </Link>
+                        <div className="flex items-center gap-2">
+                          <Link
+                            href={`/${locale}/jobs/${job.id}/review`}
+                            className="btn-primary"
+                            style={{ height: 38, padding: '0 14px', fontSize: 13 }}
+                          >
+                            ✅ {locale === 'ru' ? 'Завершить' : 'Finalizează'}
+                          </Link>
+                          <Link
+                            href={`/${locale}/jobs/${job.id}`}
+                            className="btn-secondary"
+                            style={{ height: 38, padding: '0 12px', fontSize: 13 }}
+                          >
+                            →
+                          </Link>
+                        </div>
                       )}
                       {(job.status === 'done' || job.status === 'cancelled') && (
                         <Link
