@@ -54,8 +54,8 @@ export default function NotificationBell() {
       if (!user) return;
       setUserId(user.id);
 
-      const { data } = await supabase
-        .from('notifications')
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data } = await (supabase.from('notifications') as any)
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
@@ -100,8 +100,8 @@ export default function NotificationBell() {
   const markAllRead = useCallback(async () => {
     if (!userId || unread === 0) return;
     const supabase = createClient();
-    await supabase
-      .from('notifications')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase.from('notifications') as any)
       .update({ read: true })
       .eq('user_id', userId)
       .eq('read', false);
