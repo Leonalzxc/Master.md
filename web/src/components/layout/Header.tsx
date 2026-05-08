@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import type { User } from '@supabase/supabase-js';
+import NotificationBell from './NotificationBell';
 
 interface ProfileMini { name: string | null; role: string | null }
 
@@ -169,6 +170,9 @@ export default function Header() {
             className="text-xs font-semibold px-2 py-1 rounded-md transition-colors"
             style={{ color: 'var(--text-muted)', border: '1px solid var(--glass-border)' }}
           >{otherLocale.toUpperCase()}</Link>
+
+          {/* Notifications (logged-in only) */}
+          {user && <NotificationBell />}
 
           {/* Avatar (all screen sizes) */}
           {avatarEl}
