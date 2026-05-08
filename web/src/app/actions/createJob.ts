@@ -14,6 +14,7 @@ export async function createJob(formData: {
   budget: string;
   urgent: boolean;
   needsQuote: boolean;
+  photos: string[];
   locale: string;
 }) {
   const supabase = await createClient();
@@ -34,6 +35,7 @@ export async function createJob(formData: {
     budget_min: budgetNum,
     urgent: formData.urgent,
     needs_quote: formData.needsQuote,
+    photos: formData.photos.length > 0 ? formData.photos : null,
     status: 'active',
   }).select('id').single();
 
