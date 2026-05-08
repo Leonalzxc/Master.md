@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { CATEGORY_LABELS_RU, CATEGORY_ICONS, type Category } from '@/lib/mock/data';
 import { createJob } from '@/app/actions/createJob';
 import LocationPicker from './LocationPicker';
+import PhotoUpload from './PhotoUpload';
 
 const STEPS = ['Категория', 'Описание', 'Место'];
 
@@ -12,6 +13,7 @@ interface FormData {
   description: string;
   urgent: boolean;
   needsQuote: boolean;
+  photos: string[];
   lat: number | null;
   lng: number | null;
   area: string;
@@ -23,6 +25,7 @@ const INITIAL: FormData = {
   description: '',
   urgent: false,
   needsQuote: false,
+  photos: [],
   lat: null,
   lng: null,
   area: '',
@@ -78,6 +81,7 @@ export default function RequestWizard({ locale }: Props) {
         budget: form.budget,
         urgent: form.urgent,
         needsQuote: form.needsQuote,
+        photos: form.photos,
         locale,
       });
     } catch (err) {
@@ -234,6 +238,15 @@ function Step2Description({ form, set, errors, locale }: StepProps) {
         <Chip active={form.needsQuote} onClick={() => set('needsQuote', !form.needsQuote)}>
           📋 {locale === 'ru' ? 'Нужна смета' : 'Deviz necesar'}
         </Chip>
+      </div>
+
+      <div>
+        <label className="field-label">{locale === 'ru' ? 'Фото (необязательно)' : 'Foto (opțional)'}</label>
+        <PhotoUpload
+          urls={form.photos}
+          onChange={(urls) => set('photos', urls)}
+          locale={locale}
+        />
       </div>
     </div>
   );

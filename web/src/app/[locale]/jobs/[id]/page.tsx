@@ -123,6 +123,22 @@ export default async function JobDetailPage({ params }: Props) {
                 <p style={{ color: 'var(--text-secondary)', lineHeight: 1.75, fontSize: 15 }}>
                   {job.description}
                 </p>
+
+                {job.photos && (job.photos as string[]).length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-4">
+                    {(job.photos as string[]).map((url: string) => (
+                      <a key={url} href={url} target="_blank" rel="noopener noreferrer"
+                        style={{ display: 'block', width: 100, height: 100, borderRadius: 'var(--radius-sm)', overflow: 'hidden', border: '1.5px solid var(--glass-border)', flexShrink: 0 }}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 200ms' }}
+                          onMouseEnter={(e) => { (e.target as HTMLImageElement).style.transform = 'scale(1.05)'; }}
+                          onMouseLeave={(e) => { (e.target as HTMLImageElement).style.transform = 'scale(1)'; }}
+                        />
+                      </a>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="card p-6">
