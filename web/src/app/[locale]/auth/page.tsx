@@ -40,10 +40,10 @@ export default async function AuthPage({ params, searchParams }: Props) {
                 M
               </div>
               <h1 className="font-bold text-xl mb-1" style={{ fontFamily: 'var(--font-display)', color: 'var(--text)' }}>
-                {locale === 'ru' ? 'Вход в MASTER' : 'Intră în MASTER'}
+                {locale === 'ru' ? 'Войти или зарегистрироваться' : 'Intră sau înregistrează-te'}
               </h1>
               <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-                {locale === 'ru' ? 'Введите номер телефона — отправим код' : 'Introduceți numărul de telefon — vom trimite un cod'}
+                {locale === 'ru' ? 'Введите номер — пришлём код подтверждения' : 'Introduceți numărul — vom trimite un cod'}
               </p>
             </div>
 
