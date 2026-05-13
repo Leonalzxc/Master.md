@@ -10,9 +10,11 @@ import type { Job } from '@/lib/supabase/types';
 
 type JobWithBids = Job & { bid_count: { count: number }[] };
 
+const PAGE_SIZE = 20;
+
 type Props = {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ city?: string; category?: string; q?: string; sort?: string }>;
+  searchParams: Promise<{ city?: string; category?: string; q?: string; sort?: string; page?: string }>;
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -22,15 +24,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function JobsPage({ params, searchParams }: Props) {
   const { locale } = await params;
-  const { city, category, q, sort } = await searchParams;
+  const { city, category, q, sort, page: pageParam } = await searchParams;
+  const page = Math.max(1, parseInt(pageParam ?? '1', 10));
+  const from = (page - 1) * PAGE_SIZE;
+  const to   = from + PAGE_SIZE; // fetch PAGE_SIZE+1 to detect if next page exists
 
   const supabase = await createClient();
 
   let query = supabase
     .from('jobs')
     .select('*, bid_count:bids(count)')
-    .eq('status', 'active')
-    .limit(60);
+    .eq('status', 'active');
 
   if (city) query = query.eq('city', city);
   if (category) query = query.eq('category', category);
@@ -39,8 +43,12 @@ export default async function JobsPage({ params, searchParams }: Props) {
   else if (sort === 'budget') query = (query as any).order('budget_max', { ascending: false, nullsFirst: false }).order('created_at', { ascending: false });
   else query = query.order('created_at', { ascending: false });
 
+  query = (query as any).range(from, to);
+
   const { data: rawJobs, error } = await query;
-  const jobs = rawJobs as JobWithBids[] | null;
+  const allFetched = (rawJobs as JobWithBids[] | null) ?? [];
+  const hasNextPage = allFetched.length > PAGE_SIZE;
+  const jobs = allFetched.slice(0, PAGE_SIZE) as JobWithBids[];
 
   return (
     <>
@@ -53,7 +61,9 @@ export default async function JobsPage({ params, searchParams }: Props) {
                 {locale === 'ru' ? 'Заявки на работу' : 'Cereri de lucru'}
               </h1>
               <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
-                {jobs?.length ?? 0} {locale === 'ru' ? 'активных заявок' : 'cereri active'}
+                {locale === 'ru'
+                  ? `Стр. ${page}${hasNextPage ? '+' : ''} · ${jobs.length} ${jobs.length === 1 ? 'заявка' : jobs.length < 5 ? 'заявки' : 'заявок'}`
+                  : `Pag. ${page}${hasNextPage ? '+' : ''} · ${jobs.length} cereri`}
               </p>
             </div>
             <Link href={`/${locale}/request/new`} className="btn-primary" style={{ fontSize: 14 }}>
@@ -164,11 +174,42 @@ export default async function JobsPage({ params, searchParams }: Props) {
                   }
                 />
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {jobs.map((job) => (
-                    <JobCard key={job.id} job={job} locale={locale} />
-                  ))}
-                </div>
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {jobs.map((job) => (
+                      <JobCard key={job.id} job={job} locale={locale} />
+                    ))}
+                  </div>
+
+                  {/* Pagination */}
+                  {(page > 1 || hasNextPage) && (
+                    <div className="flex items-center justify-center gap-3 mt-6">
+                      {page > 1 ? (
+                        <Link
+                          href={buildHref(locale, { city, category, q, sort, page: String(page - 1) })}
+                          className="btn-secondary"
+                          style={{ height: 38, padding: '0 16px', fontSize: 13 }}
+                        >
+                          ← {locale === 'ru' ? 'Назад' : 'Înapoi'}
+                        </Link>
+                      ) : <div style={{ width: 90 }} />}
+
+                      <span className="text-sm font-semibold" style={{ color: 'var(--text-muted)' }}>
+                        {locale === 'ru' ? `Стр. ${page}` : `Pag. ${page}`}
+                      </span>
+
+                      {hasNextPage ? (
+                        <Link
+                          href={buildHref(locale, { city, category, q, sort, page: String(page + 1) })}
+                          className="btn-secondary"
+                          style={{ height: 38, padding: '0 16px', fontSize: 13 }}
+                        >
+                          {locale === 'ru' ? 'Далее' : 'Următor'} →
+                        </Link>
+                      ) : <div style={{ width: 90 }} />}
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -236,12 +277,13 @@ function JobCard({ job, locale }: { job: JobWithBids; locale: string }) {
   );
 }
 
-function buildHref(locale: string, params: { city?: string; category?: string; q?: string; sort?: string }) {
+function buildHref(locale: string, params: { city?: string; category?: string; q?: string; sort?: string; page?: string }) {
   const parts: string[] = [];
   if (params.city) parts.push(`city=${encodeURIComponent(params.city)}`);
   if (params.category) parts.push(`category=${params.category}`);
   if (params.q) parts.push(`q=${encodeURIComponent(params.q)}`);
   if (params.sort && params.sort !== 'newest') parts.push(`sort=${params.sort}`);
+  if (params.page && params.page !== '1') parts.push(`page=${params.page}`);
   return `/${locale}/jobs${parts.length ? '?' + parts.join('&') : ''}`;
 }
 
