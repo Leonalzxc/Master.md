@@ -18,12 +18,33 @@ type ReviewRow = Review & {
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { id } = await params;
+  const { locale, id } = await params;
   const supabase = await createClient();
-  const { data } = await supabase.from('profiles').select('*').eq('id', id).single();
-  const profile = data as Profile | null;
-  if (!profile) return { title: 'Мастер не найден' };
-  return { title: profile.name ?? 'Мастер' };
+  const { data: wr } = await supabase
+    .from('profiles').select('*, profiles_worker(bio, categories, rating_avg, rating_count)').eq('id', id).single();
+  const w = wr as unknown as { name: string | null; city: string | null; profiles_worker: { bio?: string | null; rating_avg?: number } | null } | null;
+  if (!w) return { title: locale === 'ru' ? 'Мастер не найден' : 'Meșter negăsit' };
+
+  const name = w.name ?? (locale === 'ru' ? 'Мастер' : 'Meșter');
+  const title = locale === 'ru' ? `${name} — мастер в ${w.city ?? 'Молдове'}` : `${name} — meșter în ${w.city ?? 'Moldova'}`;
+  const description = w.profiles_worker?.bio?.slice(0, 155) ??
+    (locale === 'ru' ? `Профиль мастера ${name} на MASTER Moldova` : `Profilul meșterului ${name} pe MASTER Moldova`);
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://master.md';
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: 'profile',
+      url: `${siteUrl}/${locale}/workers/${id}`,
+    },
+    alternates: {
+      canonical: `${siteUrl}/${locale}/workers/${id}`,
+      languages: { ru: `${siteUrl}/ru/workers/${id}`, ro: `${siteUrl}/ro/workers/${id}` },
+    },
+  };
 }
 
 export default async function WorkerProfilePage({ params }: Props) {

@@ -11,9 +11,11 @@ interface Props {
   locale: string;
   profile: Profile;
   workerProfile: ProfileWorker | null;
+  telegramConnected?: boolean;
+  userId: string;
 }
 
-export default function ProfileForm({ locale, profile, workerProfile }: Props) {
+export default function ProfileForm({ locale, profile, workerProfile, telegramConnected = false, userId }: Props) {
   const router = useRouter();
   const t = (ru: string, ro: string) => locale === 'ru' ? ru : ro;
 
@@ -263,6 +265,43 @@ export default function ProfileForm({ locale, profile, workerProfile }: Props) {
           </section>
         </>
       )}
+
+      {/* Telegram notifications */}
+      <section className="card p-5">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-3">
+            <span style={{ fontSize: 28 }}>✈️</span>
+            <div>
+              <p className="font-semibold text-sm" style={{ color: 'var(--text)' }}>
+                {t('Уведомления в Telegram', 'Notificări Telegram')}
+              </p>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                {telegramConnected
+                  ? t('Подключено — уведомления активны', 'Conectat — notificările sunt active')
+                  : t('Получайте отклики и обновления мгновенно', 'Primiți oferte și actualizări instant')}
+              </p>
+            </div>
+          </div>
+          {telegramConnected ? (
+            <span
+              className="text-xs font-semibold px-3 py-1.5 rounded-full"
+              style={{ background: 'var(--success-dim)', color: 'var(--success)', border: '1px solid rgba(22,163,74,.2)' }}
+            >
+              ✓ {t('Подключено', 'Conectat')}
+            </span>
+          ) : (
+            <a
+              href={`https://t.me/${process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME ?? 'mastermdbot'}?start=${userId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-secondary shrink-0"
+              style={{ height: 36, padding: '0 16px', fontSize: 13, textDecoration: 'none' }}
+            >
+              {t('Подключить →', 'Conectează →')}
+            </a>
+          )}
+        </div>
+      </section>
 
       {/* Save */}
       {error && <p className="text-sm" style={{ color: 'var(--danger)' }}>{error}</p>}
