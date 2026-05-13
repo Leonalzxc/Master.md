@@ -14,11 +14,11 @@ export async function createBid(input: {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('not_authenticated');
 
-  // Must be a worker with completed onboarding
-  const { data: rawWorker } = await supabase
-    .from('profiles_worker').select('completed_at').eq('id', user.id).single();
+  // Must have role = 'worker'
+  const { data: rawProfile } = await supabase
+    .from('profiles').select('role').eq('id', user.id).single();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  if (!(rawWorker as any)?.completed_at) throw new Error('not_worker');
+  if ((rawProfile as any)?.role !== 'worker') throw new Error('not_worker');
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (supabase.from('bids') as any).insert({

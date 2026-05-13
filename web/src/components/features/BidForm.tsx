@@ -26,13 +26,15 @@ export default function BidForm({ jobId, locale }: Props) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setAuthState('guest'); return; }
 
-      const [{ data: worker }, { data: existingBid }] = await Promise.all([
-        supabase.from('profiles_worker').select('completed_at').eq('id', user.id).single(),
-        supabase.from('bids').select('id').eq('job_id', jobId).eq('worker_id', user.id).maybeSingle(),
+      // Check role from profile (faster than profiles_worker join)
+      const [{ data: profile }, { data: existingBid }] = await Promise.all([
+        supabase.from('profiles').select('role').eq('id', user.id).single(),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (supabase.from('bids') as any).select('id').eq('job_id', jobId).eq('worker_id', user.id).maybeSingle(),
       ]);
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      if (!(worker as any)?.completed_at) { setAuthState('not_worker'); return; }
+      if ((profile as any)?.role !== 'worker') { setAuthState('not_worker'); return; }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       if (existingBid as any) { setAuthState('already_bid'); return; }
       setAuthState('ready');
@@ -97,8 +99,8 @@ export default function BidForm({ jobId, locale }: Props) {
       >
         <span className="text-2xl">👷</span>
         <p>{t('Зарегистрируйтесь как мастер, чтобы откликаться', 'Înregistrați-vă ca meșter pentru a trimite oferte')}</p>
-        <Link href={`/${locale}/onboarding`} className="btn-secondary" style={{ fontSize: 13, height: 34 }}>
-          {t('Пройти регистрацию', 'Înregistrare')}
+        <Link href={`/${locale}/auth`} className="btn-secondary" style={{ fontSize: 13, height: 34 }}>
+          {t('Зарегистрироваться как мастер', 'Înregistrare ca meșter')}
         </Link>
       </div>
     );
