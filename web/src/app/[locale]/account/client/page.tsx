@@ -5,6 +5,7 @@ import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import Badge from '@/components/ui/Badge';
 import EmptyState from '@/components/ui/EmptyState';
+import CancelJobButton from '@/components/features/CancelJobButton';
 import { createClient } from '@/lib/supabase/server';
 import { CATEGORY_LABELS_RU, CATEGORY_ICONS, type Category } from '@/lib/mock/data';
 import type { Job } from '@/lib/supabase/types';
@@ -138,13 +139,16 @@ export default async function ClientDashboard({ params, searchParams }: Props) {
                         </Link>
                       )}
                       {job.status === 'active' && bidCount === 0 && (
-                        <Link
-                          href={`/${locale}/jobs/${job.id}`}
-                          className="btn-secondary"
-                          style={{ height: 38, padding: '0 14px', fontSize: 13 }}
-                        >
-                          {locale === 'ru' ? 'Открыть' : 'Deschide'}
-                        </Link>
+                        <>
+                          <Link
+                            href={`/${locale}/jobs/${job.id}`}
+                            className="btn-secondary"
+                            style={{ height: 38, padding: '0 14px', fontSize: 13 }}
+                          >
+                            {locale === 'ru' ? 'Открыть' : 'Deschide'}
+                          </Link>
+                          <CancelJobButton jobId={job.id} locale={locale} />
+                        </>
                       )}
                       {job.status === 'in_progress' && (
                         <div className="flex items-center gap-2">
