@@ -177,7 +177,7 @@ export default function Header() {
           {/* Avatar (all screen sizes) */}
           {avatarEl}
 
-          {/* Desktop-only: login + CTA — wrapped in a div so hidden/flex works (btn-* has display:inline-flex which overrides Tailwind's hidden) */}
+          {/* Desktop-only: login + CTA */}
           <div className="hidden md:flex items-center gap-2">
             {!user && (
               <Link
@@ -186,14 +186,21 @@ export default function Header() {
                 style={{ height: 36, padding: '0 16px', fontSize: 14 }}
               >{t('login')}</Link>
             )}
+            {user && (
+              <Link
+                href={`/${locale}/account`}
+                className="btn-secondary text-sm"
+                style={{ height: 36, padding: '0 14px', fontSize: 13 }}
+              >
+                {locale === 'ru' ? 'Мой аккаунт' : 'Contul meu'}
+              </Link>
+            )}
             <Link
-              href={isWorker ? `/${locale}/jobs` : `/${locale}/request/new`}
+              href={`/${locale}/request/new`}
               className="btn-primary text-sm"
               style={{ height: 36, padding: '0 14px', fontSize: 13 }}
             >
-              {isWorker
-                ? (locale === 'ru' ? 'Найти заявки →' : 'Găsește cereri →')
-                : t('createRequest')}
+              {t('createRequest')}
             </Link>
           </div>
 

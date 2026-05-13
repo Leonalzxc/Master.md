@@ -14,8 +14,10 @@ interface Props {
 
 export default function ProfileForm({ locale, profile, workerProfile }: Props) {
   const router = useRouter();
-  const isWorker = profile.role === 'worker';
   const t = (ru: string, ro: string) => locale === 'ru' ? ru : ro;
+
+  const [role, setRole] = useState<'client' | 'worker'>(profile.role === 'worker' ? 'worker' : 'client');
+  const isWorker = role === 'worker';
 
   const [name, setName] = useState(profile.name ?? '');
   const [city, setCity] = useState(profile.city ?? '');
@@ -50,7 +52,7 @@ export default function ProfileForm({ locale, profile, workerProfile }: Props) {
     setLoading(true);
     setError('');
     try {
-      await updateProfile({ name, city, bio, categories, areas, experience_yrs: experienceYrs, viber, telegram, whatsapp, locale });
+      await updateProfile({ name, city, role, bio, categories, areas, experience_yrs: experienceYrs, viber, telegram, whatsapp, locale });
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
       router.refresh();
@@ -63,6 +65,39 @@ export default function ProfileForm({ locale, profile, workerProfile }: Props) {
 
   return (
     <div className="flex flex-col gap-6">
+
+      {/* Role switcher */}
+      <section className="card p-5">
+        <p className="text-sm font-semibold mb-3" style={{ color: 'var(--text-secondary)' }}>
+          {t('Кто я на платформе', 'Rolul meu pe platformă')}
+        </p>
+        <div className="grid grid-cols-2 gap-3">
+          {([
+            ['client', '🏠', t('Заказчик', 'Client'), t('Ищу мастера', 'Caut meșter')],
+            ['worker', '🔧', t('Мастер', 'Meșter'),   t('Беру заказы', 'Accept comenzi')],
+          ] as const).map(([r, icon, label, desc]) => (
+            <button
+              key={r}
+              type="button"
+              onClick={() => setRole(r)}
+              className="rounded-2xl p-4 text-left flex flex-col gap-1 border-2 transition-all"
+              style={{
+                background: role === r ? 'var(--accent-dim)' : 'var(--surface-2)',
+                borderColor: role === r ? 'var(--accent)' : 'var(--glass-border)',
+              }}
+            >
+              <span style={{ fontSize: 26 }}>{icon}</span>
+              <span className="font-semibold text-sm" style={{ color: 'var(--text)' }}>{label}</span>
+              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{desc}</span>
+            </button>
+          ))}
+        </div>
+        {role === 'worker' && !workerProfile && (
+          <p className="text-xs mt-3" style={{ color: 'var(--accent)' }}>
+            ℹ️ {t('После сохранения появятся поля для мастера', 'După salvare vor apărea câmpuri pentru meșter')}
+          </p>
+        )}
+      </section>
 
       {/* Base info */}
       <section className="card p-6 flex flex-col gap-4">
