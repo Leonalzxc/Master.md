@@ -23,12 +23,31 @@ type BidRow = Bid & {
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { id } = await params;
+  const { locale, id } = await params;
   const supabase = await createClient();
   const { data } = await supabase.from('jobs').select('*').eq('id', id).single();
   const job = data as Job | null;
-  if (!job) return { title: 'Заявка не найдена' };
-  return { title: `${CATEGORY_LABELS_RU[job.category as Category]} — ${job.city}, ${job.area}` };
+  if (!job) return { title: locale === 'ru' ? 'Заявка не найдена' : 'Cerere negăsită' };
+
+  const cat = CATEGORY_LABELS_RU[job.category as Category];
+  const title = `${cat} — ${job.city}, ${job.area}`;
+  const description = job.description.slice(0, 155) + (job.description.length > 155 ? '…' : '');
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://master.md';
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: 'article',
+      url: `${siteUrl}/${locale}/jobs/${id}`,
+    },
+    alternates: {
+      canonical: `${siteUrl}/${locale}/jobs/${id}`,
+      languages: { ru: `${siteUrl}/ru/jobs/${id}`, ro: `${siteUrl}/ro/jobs/${id}` },
+    },
+  };
 }
 
 export default async function JobDetailPage({ params }: Props) {

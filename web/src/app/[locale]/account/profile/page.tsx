@@ -22,7 +22,7 @@ export default async function ProfilePage({ params }: Props) {
   if (!user) redirect(`/${locale}/auth`);
 
   const { data: rawProfile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
-  const profile = rawProfile as Profile | null;
+  const profile = rawProfile as (Profile & { telegram_chat_id?: number | null }) | null;
   if (!profile) redirect(`/${locale}/auth`);
 
   const { data: rawWorker } = await supabase.from('profiles_worker').select('*').eq('id', user.id).single();
@@ -85,7 +85,13 @@ export default async function ProfilePage({ params }: Props) {
         </div>
 
         <div className="container" style={{ paddingTop: 28, maxWidth: 680 }}>
-          <ProfileForm locale={locale} profile={profile} workerProfile={workerProfile} />
+          <ProfileForm
+            locale={locale}
+            profile={profile}
+            workerProfile={workerProfile}
+            telegramConnected={!!profile.telegram_chat_id}
+            userId={user.id}
+          />
         </div>
       </main>
       <Footer />

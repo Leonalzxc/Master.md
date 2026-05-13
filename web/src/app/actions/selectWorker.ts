@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
+import { sendTelegramMessage } from '@/lib/telegram';
 
 export async function selectWorker(jobId: string, bidId: string, workerId: string, locale: string) {
   const supabase = await createClient();
@@ -28,4 +29,24 @@ export async function selectWorker(jobId: string, bidId: string, workerId: strin
 
   revalidatePath(`/${locale}/jobs/${jobId}`);
   revalidatePath(`/${locale}/account/client`);
+
+  // Notify selected worker via Telegram (fire-and-forget)
+  try {
+    const { data: workerProfile } = await supabase
+      .from('profiles')
+      .select('telegram_chat_id, name')
+      .eq('id', workerId)
+      .single();
+
+    const worker = workerProfile as { telegram_chat_id: number | null; name: string | null } | null;
+    if (worker?.telegram_chat_id) {
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://master.md';
+      await sendTelegramMessage({
+        chatId: worker.telegram_chat_id,
+        text: `🎉 <b>Вас выбрали исполнителем!</b>\n\nЗаказчик выбрал вас для выполнения работы. Теперь вам доступны контакты заказчика.\n\n<a href="${siteUrl}/${locale}/jobs/${jobId}">Открыть заявку →</a>`,
+      });
+    }
+  } catch {
+    // Non-critical
+  }
 }

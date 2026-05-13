@@ -17,6 +17,7 @@ export interface Database {
           created_at: string;
           blocked_at: string | null;
           block_reason: string | null;
+          telegram_chat_id: number | null;
         };
         Insert: Omit<Database['public']['Tables']['profiles']['Row'], 'created_at'>;
         Update: Partial<Database['public']['Tables']['profiles']['Insert']>;
