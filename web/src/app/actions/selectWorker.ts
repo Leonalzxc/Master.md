@@ -10,22 +10,65 @@ export async function selectWorker(jobId: string, bidId: string, workerId: strin
   if (!user) throw new Error('Not authenticated');
 
   // Verify the current user owns this job
-  const { data: rawJob } = await supabase.from('jobs').select('*').eq('id', jobId).single();
+  const { data: rawJob, error: jobError } = await supabase
+    .from('jobs')
+    .select('id, client_id, status')
+    .eq('id', jobId)
+    .single();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const job = rawJob as any;
-  if (!job || job.client_id !== user.id) throw new Error('Not authorized');
+  if (jobError || !job || job.client_id !== user.id) throw new Error('Not authorized');
+  if (job.status !== 'active') throw new Error('Job is not active');
+
+  const { data: rawBid, error: bidError } = await supabase
+    .from('bids')
+    .select('id, job_id, worker_id, status')
+    .eq('id', bidId)
+    .single();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const bid = rawBid as any;
+  if (
+    bidError
+    || !bid
+    || bid.job_id !== jobId
+    || bid.worker_id !== workerId
+    || bid.status !== 'sent'
+  ) {
+    throw new Error('Invalid bid selection');
+  }
 
   // Select this bid, reject all others for the same job
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase.from('bids') as any).update({ status: 'selected' }).eq('id', bidId);
+  const { error: selectBidError } = await (supabase.from('bids') as any)
+    .update({ status: 'selected' })
+    .eq('id', bidId)
+    .eq('job_id', jobId)
+    .eq('worker_id', workerId)
+    .eq('status', 'sent')
+    .select('id')
+    .single();
+  if (selectBidError) throw new Error(selectBidError.message);
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase.from('bids') as any).update({ status: 'rejected' }).eq('job_id', jobId).neq('id', bidId);
+  const { error: rejectBidsError } = await (supabase.from('bids') as any)
+    .update({ status: 'rejected' })
+    .eq('job_id', jobId)
+    .eq('status', 'sent')
+    .neq('id', bidId);
+  if (rejectBidsError) throw new Error(rejectBidsError.message);
+
   // Update job status
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase.from('jobs') as any).update({
-    status: 'in_progress',
-    selected_worker_id: workerId,
-  }).eq('id', jobId);
+  const { error: updateJobError } = await (supabase.from('jobs') as any)
+    .update({
+      status: 'in_progress',
+      selected_worker_id: workerId,
+    })
+    .eq('id', jobId)
+    .eq('status', 'active')
+    .select('id')
+    .single();
+  if (updateJobError) throw new Error(updateJobError.message);
 
   revalidatePath(`/${locale}/jobs/${jobId}`);
   revalidatePath(`/${locale}/account/client`);
