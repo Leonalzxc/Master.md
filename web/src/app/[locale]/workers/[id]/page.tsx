@@ -136,22 +136,25 @@ export default async function WorkerProfilePage({ params }: Props) {
                 </Section>
               )}
 
-              <Section title={locale === 'ru' ? 'Портфолио' : 'Portofoliu'}>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {Array.from({ length: 6 }).map((_, i) => (
-                    <div
-                      key={i}
-                      className="rounded-xl aspect-square flex items-center justify-center text-2xl"
-                      style={{ background: 'var(--surface-2)', border: '1px solid var(--glass-border)' }}
-                    >
-                      {['🔌', '🪝', '🚿', '🧱', '🪟', '🛁'][i]}
-                    </div>
-                  ))}
-                </div>
-                <p className="text-xs mt-3" style={{ color: 'var(--text-muted)' }}>
-                  {locale === 'ru' ? 'Фотографии работ будут добавлены после регистрации мастера' : 'Fotografiile lucrărilor vor fi adăugate după înregistrarea meșterului'}
-                </p>
-              </Section>
+              {pw.photos && pw.photos.length > 0 ? (
+                <Section title={locale === 'ru' ? 'Портфолио' : 'Portofoliu'}>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {pw.photos.map((url, i) => (
+                      <a key={i} href={url} target="_blank" rel="noopener noreferrer"
+                        className="rounded-xl overflow-hidden aspect-square block hover-lift"
+                        style={{ border: '1px solid var(--glass-border)' }}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={url}
+                          alt={`${locale === 'ru' ? 'Работа' : 'Lucrare'} ${i + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                      </a>
+                    ))}
+                  </div>
+                </Section>
+              ) : null}
 
               <Section title={`${locale === 'ru' ? 'Отзывы' : 'Recenzii'} (${reviews.length})`}>
                 {reviews.length === 0 ? (

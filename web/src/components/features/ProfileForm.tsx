@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { CATEGORY_LABELS_RU, CATEGORY_ICONS, CITIES, AREAS, type Category } from '@/lib/mock/data';
 import { updateProfile } from '@/app/actions/updateProfile';
+import PhotoUpload from '@/components/features/PhotoUpload';
 import type { Profile, ProfileWorker } from '@/lib/supabase/types';
 
 interface Props {
@@ -28,6 +29,7 @@ export default function ProfileForm({ locale, profile, workerProfile }: Props) {
   const [viber, setViber] = useState(workerProfile?.viber ?? '');
   const [telegram, setTelegram] = useState(workerProfile?.telegram ?? '');
   const [whatsapp, setWhatsapp] = useState(workerProfile?.whatsapp ?? '');
+  const [portfolioPhotos, setPortfolioPhotos] = useState<string[]>(workerProfile?.photos ?? []);
 
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -52,7 +54,7 @@ export default function ProfileForm({ locale, profile, workerProfile }: Props) {
     setLoading(true);
     setError('');
     try {
-      await updateProfile({ name, city, role, bio, categories, areas, experience_yrs: experienceYrs, viber, telegram, whatsapp, locale });
+      await updateProfile({ name, city, role, bio, categories, areas, experience_yrs: experienceYrs, viber, telegram, whatsapp, portfolio_photos: portfolioPhotos, locale });
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
       router.refresh();
@@ -241,6 +243,23 @@ export default function ProfileForm({ locale, profile, workerProfile }: Props) {
                 <input className="field-input" value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} />
               </div>
             ))}
+          </section>
+
+          <section className="card p-6 flex flex-col gap-4">
+            <div>
+              <h2 className="font-semibold" style={{ color: 'var(--text)' }}>
+                {t('Портфолио', 'Portofoliu')}
+              </h2>
+              <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
+                {t('Фотографии ваших работ — до 10 фото, до 5 МБ каждое', 'Fotografii ale lucrărilor dvs. — până la 10 poze, max 5 MB')}
+              </p>
+            </div>
+            <PhotoUpload
+              urls={portfolioPhotos}
+              onChange={setPortfolioPhotos}
+              locale={locale}
+              maxFiles={10}
+            />
           </section>
         </>
       )}
