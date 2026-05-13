@@ -109,9 +109,13 @@ create policy "profiles_own_update"   on public.profiles for update using (id = 
 create policy "worker_public_read"    on public.profiles_worker for select using (true);
 create policy "worker_own_write"      on public.profiles_worker for all using (id = auth.uid());
 
--- Jobs: active jobs visible to all; own jobs always visible
+-- Jobs: active jobs visible to all; participants keep access after selection
 create policy "jobs_active_read"  on public.jobs for select
-  using (status = 'active' or client_id = auth.uid());
+  using (
+    status = 'active'
+    or client_id = auth.uid()
+    or selected_worker_id = auth.uid()
+  );
 create policy "jobs_own_insert"   on public.jobs for insert
   with check (client_id = auth.uid());
 create policy "jobs_own_update"   on public.jobs for update
