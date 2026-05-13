@@ -7,6 +7,7 @@ import Badge from '@/components/ui/Badge';
 import RatingStars from '@/components/ui/RatingStars';
 import BidForm from '@/components/features/BidForm';
 import SelectWorkerButton from '@/components/features/SelectWorkerButton';
+import CancelJobButton from '@/components/features/CancelJobButton';
 import { createClient } from '@/lib/supabase/server';
 import { CATEGORY_LABELS_RU, CATEGORY_ICONS, type Category } from '@/lib/mock/data';
 import type { Job, Bid, Profile, ProfileWorker } from '@/lib/supabase/types';
@@ -41,13 +42,33 @@ export default async function JobDetailPage({ params }: Props) {
   const job = rawJob as Job | null;
   if (jobError || !job) notFound();
 
-  const isOwner = !!(user && (job as unknown as { client_id: string }).client_id === user.id);
+  const jobAny = job as unknown as { client_id: string; selected_worker_id?: string };
+  const isOwner = !!(user && jobAny.client_id === user.id);
 
-  const { data: rawBids } = await supabase
-    .from('bids')
-    .select('*, worker:profiles(id, name, profiles_worker(is_pro, verified, rating_avg, rating_count))')
-    .eq('job_id', id)
-    .order('created_at', { ascending: true });
+  // Fetch selected worker contacts (for client) + client phone (for selected worker)
+  const selectedWorkerId = jobAny.selected_worker_id;
+  const isSelectedWorker = !!(user && selectedWorkerId && selectedWorkerId === user.id);
+
+  const [{ data: rawBids }, { data: rawWorkerContacts }, { data: rawClientProfile }] = await Promise.all([
+    supabase
+      .from('bids')
+      .select('*, worker:profiles(id, name, profiles_worker(is_pro, verified, rating_avg, rating_count))')
+      .eq('job_id', id)
+      .order('created_at', { ascending: true }),
+    // Owner sees selected worker's contacts when in_progress
+    isOwner && selectedWorkerId && job.status === 'in_progress'
+      ? supabase.from('profiles_worker').select('viber, telegram, whatsapp').eq('id', selectedWorkerId).single()
+      : Promise.resolve({ data: null }),
+    // Selected worker sees client's phone when in_progress
+    isSelectedWorker && job.status === 'in_progress'
+      ? supabase.from('profiles').select('name, phone').eq('id', jobAny.client_id).single()
+      : Promise.resolve({ data: null }),
+  ]);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const workerContacts = rawWorkerContacts as any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const clientProfile = rawClientProfile as any;
 
   const bids = ((rawBids ?? []) as BidRow[]).sort((a, b) => {
     if (a.status === 'selected') return -1;
@@ -181,6 +202,35 @@ export default async function JobDetailPage({ params }: Props) {
                       </p>
                     </div>
 
+                    {/* Selected worker contacts */}
+                    {job.status === 'in_progress' && workerContacts && (
+                      <div className="flex flex-col gap-2 rounded-xl p-3" style={{ background: 'rgba(22,163,74,.05)', border: '1px solid rgba(22,163,74,.2)' }}>
+                        <p className="text-xs font-semibold" style={{ color: 'var(--success)' }}>
+                          📞 {locale === 'ru' ? 'Контакты мастера' : 'Contactele meșterului'}
+                        </p>
+                        {workerContacts.viber && (
+                          <a href={`viber://chat?number=${workerContacts.viber.replace(/\D/g,'')}`} className="text-sm font-medium" style={{ color: 'var(--text)', textDecoration: 'none' }}>
+                            💜 Viber: {workerContacts.viber}
+                          </a>
+                        )}
+                        {workerContacts.telegram && (
+                          <a href={`https://t.me/${workerContacts.telegram.replace('@','')}`} target="_blank" rel="noopener" className="text-sm font-medium" style={{ color: 'var(--text)', textDecoration: 'none' }}>
+                            ✈️ Telegram: {workerContacts.telegram}
+                          </a>
+                        )}
+                        {workerContacts.whatsapp && (
+                          <a href={`https://wa.me/${workerContacts.whatsapp.replace(/\D/g,'')}`} target="_blank" rel="noopener" className="text-sm font-medium" style={{ color: 'var(--text)', textDecoration: 'none' }}>
+                            💬 WhatsApp: {workerContacts.whatsapp}
+                          </a>
+                        )}
+                        {!workerContacts.viber && !workerContacts.telegram && !workerContacts.whatsapp && (
+                          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                            {locale === 'ru' ? 'Мастер не указал контакты. Напишите ему в отклике.' : 'Meșterul nu a indicat contacte.'}
+                          </p>
+                        )}
+                      </div>
+                    )}
+
                     {/* CTA: leave review when work is in progress */}
                     {job.status === 'in_progress' && (
                       <Link
@@ -190,6 +240,11 @@ export default async function JobDetailPage({ params }: Props) {
                       >
                         ✅ {locale === 'ru' ? 'Завершить и оставить отзыв' : 'Finalizează și lasă recenzie'}
                       </Link>
+                    )}
+
+                    {/* Cancel — only for active jobs */}
+                    {job.status === 'active' && (
+                      <CancelJobButton jobId={id} locale={locale} />
                     )}
 
                     {job.status === 'done' && (
@@ -211,21 +266,40 @@ export default async function JobDetailPage({ params }: Props) {
                   </>
                 ) : (
                   <>
-                    <h3 className="font-semibold" style={{ color: 'var(--text)' }}>
-                      {locale === 'ru' ? 'Вы мастер?' : 'Ești meșter?'}
-                    </h3>
-                    <p className="text-sm" style={{ color: 'var(--text-muted)', lineHeight: 1.6 }}>
-                      {locale === 'ru'
-                        ? 'Войдите и отправьте свой отклик с ценой и сроками.'
-                        : 'Autentifică-te și trimite oferta ta cu preț și termene.'}
-                    </p>
-                    <BidForm jobId={id} locale={locale} />
-                    <div
-                      className="rounded-xl p-3 text-xs text-center"
-                      style={{ background: 'var(--accent-dim)', color: 'var(--accent)' }}
-                    >
-                      🔒 {locale === 'ru' ? 'Контакты заказчика открываются только при выборе мастера' : 'Contactele clientului se deschid doar la selectarea meșterului'}
-                    </div>
+                    {/* Selected worker sees client contacts */}
+                    {isSelectedWorker && clientProfile && (
+                      <div className="flex flex-col gap-2 rounded-xl p-3" style={{ background: 'rgba(22,163,74,.05)', border: '1px solid rgba(22,163,74,.2)' }}>
+                        <p className="text-xs font-semibold" style={{ color: 'var(--success)' }}>
+                          🎉 {locale === 'ru' ? 'Вас выбрали! Контакты заказчика:' : 'Ați fost selectat! Contactele clientului:'}
+                        </p>
+                        <p className="text-sm font-medium" style={{ color: 'var(--text)' }}>
+                          👤 {clientProfile.name}
+                        </p>
+                        <a href={`tel:${clientProfile.phone}`} className="text-sm font-semibold" style={{ color: 'var(--accent)', textDecoration: 'none' }}>
+                          📱 {clientProfile.phone}
+                        </a>
+                      </div>
+                    )}
+
+                    {!isSelectedWorker && (
+                      <>
+                        <h3 className="font-semibold" style={{ color: 'var(--text)' }}>
+                          {locale === 'ru' ? 'Вы мастер?' : 'Ești meșter?'}
+                        </h3>
+                        <p className="text-sm" style={{ color: 'var(--text-muted)', lineHeight: 1.6 }}>
+                          {locale === 'ru'
+                            ? 'Войдите и отправьте свой отклик с ценой и сроками.'
+                            : 'Autentifică-te și trimite oferta ta cu preț și termene.'}
+                        </p>
+                        <BidForm jobId={id} locale={locale} />
+                        <div
+                          className="rounded-xl p-3 text-xs text-center"
+                          style={{ background: 'var(--accent-dim)', color: 'var(--accent)' }}
+                        >
+                          🔒 {locale === 'ru' ? 'Контакты заказчика открываются только при выборе мастера' : 'Contactele clientului se deschid doar la selectarea meșterului'}
+                        </div>
+                      </>
+                    )}
                   </>
                 )}
               </div>
