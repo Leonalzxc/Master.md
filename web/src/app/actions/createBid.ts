@@ -46,12 +46,12 @@ export async function createBid(input: {
       .eq('id', input.jobId)
       .single();
 
-    if (jobData) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const job = jobData as { client_id: string } | null;
+    if (job) {
       const { data: ownerData } = await supabase
         .from('profiles')
         .select('telegram_chat_id, name')
-        .eq('id', (jobData as any).client_id)
+        .eq('id', job.client_id)
         .single();
 
       const owner = ownerData as { telegram_chat_id: number | null; name: string | null } | null;
