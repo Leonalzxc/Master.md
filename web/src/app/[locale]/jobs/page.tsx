@@ -38,11 +38,15 @@ export default async function JobsPage({ params, searchParams }: Props) {
 
   if (city) query = query.eq('city', city);
   if (category) query = query.eq('category', category);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   if (q) query = (query as any).ilike('description', `%${q}%`);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   if (sort === 'urgent') query = (query as any).order('urgent', { ascending: false }).order('created_at', { ascending: false });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   else if (sort === 'budget') query = (query as any).order('budget_max', { ascending: false, nullsFirst: false }).order('created_at', { ascending: false });
   else query = query.order('created_at', { ascending: false });
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   query = (query as any).range(from, to);
 
   const { data: rawJobs, error } = await query;
@@ -227,6 +231,7 @@ function JobCard({ job, locale }: { job: JobWithBids; locale: string }) {
   const bidsCount = Array.isArray(job.bid_count) ? (job.bid_count[0] as { count: number })?.count ?? 0 : 0;
 
   const ago = (() => {
+    // eslint-disable-next-line react-hooks/purity -- Server-rendered relative timestamp.
     const diff = Date.now() - new Date(job.created_at).getTime();
     const h = Math.floor(diff / 3_600_000);
     if (h < 1) return locale === 'ru' ? 'только что' : 'acum';
