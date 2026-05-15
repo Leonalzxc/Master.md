@@ -10,13 +10,14 @@ export async function selectWorker(jobId: string, bidId: string, workerId: strin
   if (!user) throw new Error('Not authenticated');
 
   // Verify the current user owns this job
-  const { data: job, error: jobError } = await supabase
+  const { data: rawJob, error: jobError } = await supabase
     .from('jobs')
     .select('id, client_id, status')
     .eq('id', jobId)
     .single();
+  const job = rawJob as { id: string; client_id: string; status: string } | null;
   if (jobError || !job) throw new Error('job_not_found');
-  if (!job || job.client_id !== user.id) throw new Error('Not authorized');
+  if (job.client_id !== user.id) throw new Error('Not authorized');
   if (job.status !== 'active') throw new Error('invalid_status');
 
   // Never trust client-provided IDs independently; the selected worker must
