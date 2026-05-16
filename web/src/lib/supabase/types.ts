@@ -40,6 +40,7 @@ export interface Database {
           rating_count: number;
           verified: boolean;
           completed_at: string | null;
+          verification_submitted_at: string | null;
         };
         Insert: Omit<Database['public']['Tables']['profiles_worker']['Row'], never>;
         Update: Partial<Database['public']['Tables']['profiles_worker']['Row']>;
@@ -95,7 +96,28 @@ export interface Database {
       };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      profile_private_fields: {
+        Args: { p_profile_id: string };
+        Returns: {
+          name: string | null;
+          phone: string;
+          telegram_chat_id: number | null;
+        }[];
+      };
+      worker_private_contacts: {
+        Args: { p_worker_id: string };
+        Returns: {
+          viber: string | null;
+          telegram: string | null;
+          whatsapp: string | null;
+        }[];
+      };
+      worker_has_bid_on_job: {
+        Args: { p_job_id: string; p_worker_id: string };
+        Returns: boolean;
+      };
+    };
   };
 }
 
