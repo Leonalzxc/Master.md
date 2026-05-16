@@ -9,6 +9,7 @@ import BidForm from '@/components/features/BidForm';
 import SelectWorkerButton from '@/components/features/SelectWorkerButton';
 import CancelJobButton from '@/components/features/CancelJobButton';
 import { createClient } from '@/lib/supabase/server';
+import { PROFILE_PRIVATE_SELECT } from '@/lib/supabase/selects';
 import { CATEGORY_LABELS_RU, CATEGORY_ICONS, type Category } from '@/lib/mock/data';
 import type { Job, Bid, Profile, ProfileWorker } from '@/lib/supabase/types';
 
@@ -76,11 +77,14 @@ export default async function JobDetailPage({ params }: Props) {
       .order('created_at', { ascending: true }),
     // Owner sees selected worker's contacts when in_progress
     isOwner && selectedWorkerId && job.status === 'in_progress'
-      ? supabase.from('profiles_worker').select('viber, telegram, whatsapp').eq('id', selectedWorkerId).single()
+      ? supabase.rpc('worker_private_contacts', { p_worker_id: selectedWorkerId }).maybeSingle()
       : Promise.resolve({ data: null }),
     // Selected worker sees client's phone when in_progress
     isSelectedWorker && job.status === 'in_progress'
-      ? supabase.from('profiles').select('name, phone').eq('id', jobAny.client_id).single()
+      ? supabase
+          .rpc('profile_private_fields', { p_profile_id: jobAny.client_id })
+          .select(PROFILE_PRIVATE_SELECT)
+          .maybeSingle()
       : Promise.resolve({ data: null }),
   ]);
 

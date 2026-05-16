@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import Header from '@/components/layout/Header';
 import { createClient } from '@/lib/supabase/server';
 import OnboardingWizard from '@/components/features/OnboardingWizard';
+import { PROFILE_PUBLIC_SELECT } from '@/lib/supabase/selects';
 import type { Profile } from '@/lib/supabase/types';
 
 type Props = { params: Promise<{ locale: string }> };
@@ -20,7 +21,7 @@ export default async function OnboardingPage({ params }: Props) {
   if (!user) redirect(`/${locale}/auth`);
 
   // Already completed onboarding → go to account
-  const { data: rawProfile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+  const { data: rawProfile } = await supabase.from('profiles').select(PROFILE_PUBLIC_SELECT).eq('id', user.id).single();
   const profile = rawProfile as Profile | null;
   if (profile?.name) redirect(`/${locale}/account`);
 

@@ -6,6 +6,7 @@ import EmptyState from '@/components/ui/EmptyState';
 import Badge from '@/components/ui/Badge';
 import RatingStars from '@/components/ui/RatingStars';
 import { createClient } from '@/lib/supabase/server';
+import { PROFILE_PUBLIC_SELECT, WORKER_PUBLIC_SELECT } from '@/lib/supabase/selects';
 import { CITIES, CATEGORY_LABELS_RU, CATEGORY_ICONS, type Category } from '@/lib/mock/data';
 import type { Profile, ProfileWorker } from '@/lib/supabase/types';
 
@@ -26,7 +27,7 @@ export default async function WorkersPage({ params, searchParams }: Props) {
 
   const { data: rawWorkers, error } = await supabase
     .from('profiles')
-    .select('*, profiles_worker(*)')
+    .select(`${PROFILE_PUBLIC_SELECT}, profiles_worker(${WORKER_PUBLIC_SELECT})`)
     .eq('role', 'worker')
     .order('name');
 

@@ -6,6 +6,7 @@ import Footer from '@/components/layout/Footer';
 import Badge from '@/components/ui/Badge';
 import RatingStars from '@/components/ui/RatingStars';
 import { createClient } from '@/lib/supabase/server';
+import { PROFILE_PUBLIC_SELECT, WORKER_PUBLIC_SELECT } from '@/lib/supabase/selects';
 import { CATEGORY_LABELS_RU, CATEGORY_ICONS, type Category } from '@/lib/mock/data';
 import type { Profile, ProfileWorker, Review, Job } from '@/lib/supabase/types';
 
@@ -21,7 +22,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale, id } = await params;
   const supabase = await createClient();
   const { data: wr } = await supabase
-    .from('profiles').select('*, profiles_worker(bio, categories, rating_avg, rating_count)').eq('id', id).single();
+    .from('profiles')
+    .select(`${PROFILE_PUBLIC_SELECT}, profiles_worker(bio, categories, rating_avg, rating_count)`)
+    .eq('id', id)
+    .single();
   const w = wr as unknown as { name: string | null; city: string | null; profiles_worker: { bio?: string | null; rating_avg?: number } | null } | null;
   if (!w) return { title: locale === 'ru' ? 'Мастер не найден' : 'Meșter negăsit' };
 
@@ -52,7 +56,10 @@ export default async function WorkerProfilePage({ params }: Props) {
   const supabase = await createClient();
 
   const { data: wr, error } = await supabase
-    .from('profiles').select('*, profiles_worker(*)').eq('id', id).single();
+    .from('profiles')
+    .select(`${PROFILE_PUBLIC_SELECT}, profiles_worker(${WORKER_PUBLIC_SELECT})`)
+    .eq('id', id)
+    .single();
   if (error || !wr) notFound();
   const worker = wr as unknown as WorkerRow;
   const pw = worker.profiles_worker;

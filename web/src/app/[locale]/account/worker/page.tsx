@@ -6,6 +6,7 @@ import Footer from '@/components/layout/Footer';
 import Badge from '@/components/ui/Badge';
 import EmptyState from '@/components/ui/EmptyState';
 import { createClient } from '@/lib/supabase/server';
+import { WORKER_PUBLIC_SELECT } from '@/lib/supabase/selects';
 import { CATEGORY_LABELS_RU, CATEGORY_ICONS, type Category } from '@/lib/mock/data';
 import type { Bid, Job, ProfileWorker } from '@/lib/supabase/types';
 
@@ -31,7 +32,7 @@ export default async function WorkerDashboard({ params }: Props) {
       .select('*, job:jobs(id, description, category, city, area, status, budget_min, budget_max, created_at)')
       .eq('worker_id', user.id)
       .order('created_at', { ascending: false }),
-    supabase.from('profiles_worker').select('*').eq('id', user.id).single(),
+    supabase.from('profiles_worker').select(WORKER_PUBLIC_SELECT).eq('id', user.id).single(),
   ]);
 
   const bids = (rawBids ?? []) as unknown as BidRow[];
