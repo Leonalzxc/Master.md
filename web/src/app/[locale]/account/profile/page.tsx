@@ -5,7 +5,7 @@ import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import ProfileForm from '@/components/features/ProfileForm';
 import { createClient } from '@/lib/supabase/server';
-import { PROFILE_PUBLIC_SELECT, WORKER_PUBLIC_SELECT } from '@/lib/supabase/selects';
+import { PROFILE_PUBLIC_SELECT, WORKER_PUBLIC_SELECT, privateRpc } from '@/lib/supabase/selects';
 import type { Profile, ProfileWorker } from '@/lib/supabase/types';
 
 type Props = { params: Promise<{ locale: string }> };
@@ -24,19 +24,21 @@ export default async function ProfilePage({ params }: Props) {
 
   const [{ data: rawProfile }, { data: rawPrivateProfile }] = await Promise.all([
     supabase.from('profiles').select(PROFILE_PUBLIC_SELECT).eq('id', user.id).single(),
-    supabase.rpc('profile_private_fields', { p_profile_id: user.id }).maybeSingle(),
+    privateRpc(supabase).rpc('profile_private_fields', { p_profile_id: user.id }).maybeSingle(),
   ]);
-  const profile = rawProfile
-    ? ({ ...rawProfile, ...(rawPrivateProfile ?? {}) } as Profile & { telegram_chat_id?: number | null })
+  const publicProfile = rawProfile as Partial<Profile> | null;
+  const profile = publicProfile
+    ? ({ ...publicProfile, ...(rawPrivateProfile ?? {}) } as Profile & { telegram_chat_id?: number | null })
     : null;
   if (!profile) redirect(`/${locale}/auth`);
 
   const [{ data: rawWorker }, { data: rawWorkerContacts }] = await Promise.all([
     supabase.from('profiles_worker').select(WORKER_PUBLIC_SELECT).eq('id', user.id).maybeSingle(),
-    supabase.rpc('worker_private_contacts', { p_worker_id: user.id }).maybeSingle(),
+    privateRpc(supabase).rpc('worker_private_contacts', { p_worker_id: user.id }).maybeSingle(),
   ]);
-  const workerProfile = rawWorker
-    ? ({ ...rawWorker, ...(rawWorkerContacts ?? {}) } as ProfileWorker)
+  const publicWorker = rawWorker as Partial<ProfileWorker> | null;
+  const workerProfile = publicWorker
+    ? ({ ...publicWorker, ...(rawWorkerContacts ?? {}) } as ProfileWorker)
     : null;
 
   const isWorker = profile.role === 'worker';

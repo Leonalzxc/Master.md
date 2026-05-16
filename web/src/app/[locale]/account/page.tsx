@@ -4,7 +4,7 @@ import Link from 'next/link';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import { createClient } from '@/lib/supabase/server';
-import { PROFILE_PUBLIC_SELECT } from '@/lib/supabase/selects';
+import { PROFILE_PUBLIC_SELECT, privateRpc } from '@/lib/supabase/selects';
 import type { Profile } from '@/lib/supabase/types';
 
 type Props = { params: Promise<{ locale: string }> };
@@ -23,10 +23,11 @@ export default async function AccountPage({ params }: Props) {
 
   const [{ data: rawProfile }, { data: rawPrivateProfile }] = await Promise.all([
     supabase.from('profiles').select(PROFILE_PUBLIC_SELECT).eq('id', user.id).single(),
-    supabase.rpc('profile_private_fields', { p_profile_id: user.id }).maybeSingle(),
+    privateRpc(supabase).rpc('profile_private_fields', { p_profile_id: user.id }).maybeSingle(),
   ]);
-  const profile = rawProfile
-    ? ({ ...rawProfile, ...(rawPrivateProfile ?? {}) } as Profile)
+  const publicProfile = rawProfile as Partial<Profile> | null;
+  const profile = publicProfile
+    ? ({ ...publicProfile, ...(rawPrivateProfile ?? {}) } as Profile)
     : null;
 
   if (!profile?.name) redirect(`/${locale}/auth`);
