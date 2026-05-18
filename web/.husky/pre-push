@@ -1,0 +1,14 @@
+#!/usr/bin/env sh
+
+cd "$(dirname -- "$0")/.."
+
+echo "🚦 Running full quality gate before push..."
+
+bash scripts/quality-gate.sh || {
+  echo ""
+  echo "❌ Quality gate failed. Push aborted."
+  echo "Fix the issues above, then try again."
+  exit 1
+}
+
+echo "✅ Quality gate passed — pushing..."

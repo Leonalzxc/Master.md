@@ -1,0 +1,12 @@
+.next
+node_modules
+dist
+build
+coverage
+.vercel
+public
+*.lock
+package-lock.json
+.husky
+supabase/.branches
+supabase/.temp

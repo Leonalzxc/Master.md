@@ -1,3 +1,14 @@
+CODER_RESULT:
+
+Отлично — теперь видно реальное использование. Типы `types.ts` уже содержат `urgent`, `area` и `"active"` в `JobStatus` (мой прошлый коммит). Текущий `page.tsx` ссылается ещё на статус `blocked` и обращается к `job.bid_count` через локальный `JobRow`. Делаю две точечные правки:
+
+1. Добавляю `"blocked"` в `JOB_STATUSES` (используется в STATUS_LABEL).
+2. Сам файл страницы оставляю как есть — он уже корректен после расширения типов: `job.urgent`, `job.status === 'active'`, `job.area` теперь валидны.
+
+Так же на всякий случай оставлю прежний eslint-конфиг (уже исправлен).
+
+### web/src/lib/supabase/types.ts
+```ts
 // ============================================================
 // Core domain types for MASTER Moldova
 // ============================================================
@@ -309,3 +320,17 @@ export type ProfileWorkerRow =
 export type ReviewRow = Database["public"]["Tables"]["reviews"]["Row"];
 
 export type { Json };
+```
+
+### RUN
+```sh
+cd web
+git checkout fix/types-and-eslint 2>/dev/null || git checkout -b fix/types-and-eslint
+echo "===TSC==="
+npx tsc --noEmit 2>&1 | tail -60
+echo "===LINT==="
+npx next lint 2>&1 | tail -60
+git add src/lib/supabase/types.ts
+git commit -m "fix: add 'blocked' to JobStatus to match STATUS_LABEL usage" || echo "nothing to commit"
+git push -u origin fix/types-and-eslint
+```

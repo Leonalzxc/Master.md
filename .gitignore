@@ -1,0 +1,9 @@
+.vercel
+.env*.local
+.env
+.DS_Store
+telegram-bots/.env
+telegram-bots/__pycache__/
+web/node_modules/
+web/.next/
+web/RUN
