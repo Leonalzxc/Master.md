@@ -38,6 +38,7 @@ export type ProfileWorker = {
 
 export const JOB_STATUSES = [
   "open",
+  "active",
   "in_progress",
   "done",
   "cancelled",
@@ -52,12 +53,14 @@ export type Job = {
   category: string;
   city: string | null;
   address: string | null;
+  area: string | null;
   lat: number | null;
   lng: number | null;
   budget_min: number | null;
   budget_max: number | null;
   currency: string;
   images: string[];
+  urgent: boolean;
   status: JobStatus;
   assigned_worker_id: string | null;
   created_at: string;
@@ -166,10 +169,16 @@ export const LISTING_SORT_VALUES = [
 export type ListingSort = (typeof LISTING_SORT_VALUES)[number];
 
 // ============================================================
-// Supabase Database schema (для createClient<Database>())
+// Supabase Database schema
 // ============================================================
 
-type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
+type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[];
 
 type Insertable<T> = Partial<T>;
 type Updatable<T> = Partial<T>;
@@ -271,13 +280,6 @@ export type Database = {
             referencedRelation: "profiles";
             referencedColumns: ["id"];
           },
-          {
-            foreignKeyName: "reviews_job_id_fkey";
-            columns: ["job_id"];
-            isOneToOne: false;
-            referencedRelation: "jobs";
-            referencedColumns: ["id"];
-          },
         ];
       };
     };
@@ -292,13 +294,17 @@ export type Database = {
   };
 };
 
-export type Tables<T extends keyof Database["public"]["Tables"]> =
-  Database["public"]["Tables"][T]["Row"];
+export type JobRow = Database["public"]["Tables"]["jobs"]["Row"];
+export type JobInsert = Database["public"]["Tables"]["jobs"]["Insert"];
+export type JobUpdate = Database["public"]["Tables"]["jobs"]["Update"];
 
-export type TablesInsert<T extends keyof Database["public"]["Tables"]> =
-  Database["public"]["Tables"][T]["Insert"];
+export type OfferRow = Database["public"]["Tables"]["offers"]["Row"];
+export type OfferInsert = Database["public"]["Tables"]["offers"]["Insert"];
 
-export type TablesUpdate<T extends keyof Database["public"]["Tables"]> =
-  Database["public"]["Tables"][T]["Update"];
+export type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
+export type ProfileWorkerRow =
+  Database["public"]["Tables"]["profiles_worker"]["Row"];
+
+export type ReviewRow = Database["public"]["Tables"]["reviews"]["Row"];
 
 export type { Json };
