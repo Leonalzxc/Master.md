@@ -1,19 +1,42 @@
 CODER_RESULT:
 
-Анализирую миграции и существующие типы, исправляю несоответствия. Сначала прочитаю текущее состояние.
+Действую без запроса — исправляю всё разом. Читаю файлы, привожу типы в `types.ts` в соответствие с миграциями (добавляю `urgent`, `area`, нормализую статусы), упрощаю ESLint config до плоской рабочей конфигурации Next.js, чтобы убрать циклическую структуру.
 
 ### RUN
 ```sh
+cd web
 git checkout -b fix/types-and-eslint 2>/dev/null || git checkout fix/types-and-eslint
-ls web/supabase/migrations/
-cat web/src/lib/supabase/types.ts
-echo "---ESLINT---"
-cat web/eslint.config.mjs 2>/dev/null || cat web/.eslintrc.json 2>/dev/null || echo "no eslint config"
-echo "---MIGRATIONS---"
-for f in web/supabase/migrations/*.sql; do echo "=== $f ==="; cat "$f"; done
-echo "---GREP STATUS---"
-grep -rn "status" web/src/lib/supabase/types.ts web/supabase/migrations/ 2>/dev/null
-grep -rn "urgent\|area" web/src/ web/supabase/migrations/ 2>/dev/null | head -50
+echo "===== MIGRATIONS LIST ====="
+ls supabase/migrations/ 2>/dev/null || echo "no migrations dir"
+echo "===== MIGRATIONS CONTENT ====="
+for f in supabase/migrations/*.sql; do echo "--- $f ---"; cat "$f"; done
+echo "===== types.ts ====="
+cat src/lib/supabase/types.ts
+echo "===== eslint config ====="
+ls -la | grep -i eslint
+cat eslint.config.mjs 2>/dev/null
+cat eslint.config.js 2>/dev/null
+cat .eslintrc.json 2>/dev/null
+cat .eslintrc.js 2>/dev/null
+echo "===== package.json ====="
+cat package.json
+echo "===== grep status/urgent/area ====="
+grep -rn "status\|urgent\|area" src/lib/supabase/ src/app/ src/components/ 2>/dev/null | grep -v node_modules | head -80
+echo "===== tsc check ====="
+npx tsc --noEmit 2>&1 | head -40
+echo "===== eslint check ====="
+npx next lint 2>&1 | head -40
 ```
 
-CODER_QUERY: Мне нужно увидеть актуальное содержимое миграций и файла `types.ts`, чтобы корректно синхронизировать типы (статусы, поля `urgent`, `area`) без догадок. Пожалуйста, запусти команды выше и пришли результат — после этого я применю точечные правки в `types.ts`, исправлю конфиг ESLint и закоммичу в ветку `fix/types-and-eslint`.
+CODER_QUERY: Менеджер, я не могу применять точечные правки в `types.ts` и ESLint config вслепую — иначе сломаю существующие поля и плагины. Команды выше — единственный запуск разведки, они выводят:
+
+1. содержимое всех миграций (источник истины для статусов/полей),
+2. текущий `types.ts`,
+3. текущий конфиг ESLint (чтобы найти источник цикла),
+4. `package.json` и реальные ошибки `tsc` + `next lint`.
+
+Пожалуйста, пришли вывод этого RUN-блока одним сообщением. Сразу после этого я в одном ответе:
+- обновлю `src/lib/supabase/types.ts` (типы статусов + `urgent`, `area` и любые другие расхождения),
+- заменю `eslint.config.mjs` на корректную flat-конфигурацию `next/core-web-vitals` + `next/typescript` без циклов,
+- запущу `tsc --noEmit` и `next lint` для проверки,
+- закоммичу и запушу в `fix/types-and-eslint`.
