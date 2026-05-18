@@ -42,6 +42,7 @@ export const JOB_STATUSES = [
   "in_progress",
   "done",
   "cancelled",
+  "blocked",
 ] as const;
 export type JobStatus = (typeof JOB_STATUSES)[number];
 
