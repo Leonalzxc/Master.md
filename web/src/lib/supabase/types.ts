@@ -2,9 +2,17 @@
 // Core domain types for MASTER Moldova
 // ============================================================
 
-export type { Category } from "@/lib/mock/data";
+export type { Category } from '@/lib/mock/data';
 
-export type UserRole = "client" | "worker" | "admin";
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[];
+
+export type UserRole = 'client' | 'worker' | 'admin';
 
 export type Profile = {
   id: string;
@@ -39,16 +47,16 @@ export type ProfileWorker = {
 };
 
 // ------------------------------------------------------------
-// Jobs (заявки клиентов)
+// Jobs
 // ------------------------------------------------------------
 
 export const JOB_STATUSES = [
-  "open",
-  "active",
-  "in_progress",
-  "done",
-  "cancelled",
-  "blocked",
+  'open',
+  'active',
+  'in_progress',
+  'done',
+  'cancelled',
+  'blocked',
 ] as const;
 export type JobStatus = (typeof JOB_STATUSES)[number];
 
@@ -77,10 +85,10 @@ export type Job = {
 };
 
 // ------------------------------------------------------------
-// Bids (отклики мастеров на заявки)
+// Bids
 // ------------------------------------------------------------
 
-export const BID_STATUSES = ["sent", "selected", "rejected"] as const;
+export const BID_STATUSES = ['sent', 'selected', 'rejected'] as const;
 export type BidStatus = (typeof BID_STATUSES)[number];
 
 export type Bid = {
@@ -97,14 +105,14 @@ export type Bid = {
 };
 
 // ------------------------------------------------------------
-// Offers (отклики мастеров)
+// Offers
 // ------------------------------------------------------------
 
 export const OFFER_STATUSES = [
-  "pending",
-  "accepted",
-  "declined",
-  "withdrawn",
+  'pending',
+  'accepted',
+  'declined',
+  'withdrawn',
 ] as const;
 export type OfferStatus = (typeof OFFER_STATUSES)[number];
 
@@ -138,10 +146,18 @@ export type Review = {
 // Notifications
 // ------------------------------------------------------------
 
+export const NOTIFICATION_TYPES = [
+  'new_bid',
+  'bid_selected',
+  'bid_received',
+  'system',
+] as const;
+export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
+
 export type Notification = {
   id: string;
   user_id: string;
-  type: string;
+  type: NotificationType | string;
   title: string;
   body: string;
   link: string | null;
@@ -154,23 +170,23 @@ export type Notification = {
 // ------------------------------------------------------------
 
 export const JOB_SORT_VALUES = [
-  "created_desc",
-  "created_asc",
-  "budget_desc",
-  "budget_asc",
+  'created_desc',
+  'created_asc',
+  'budget_desc',
+  'budget_asc',
 ] as const;
 export type JobSort = (typeof JOB_SORT_VALUES)[number];
 
 export const WORKER_SORT_VALUES = [
-  "rating_desc",
-  "rating_asc",
-  "experience_desc",
+  'rating_desc',
+  'rating_asc',
+  'experience_desc',
 ] as const;
 export type WorkerSort = (typeof WORKER_SORT_VALUES)[number];
 
-// ============================================================
-// Legacy Listing types (для обратной совместимости)
-// ============================================================
+// ------------------------------------------------------------
+// Legacy Listing types
+// ------------------------------------------------------------
 
 export type Listing = {
   id: string;
@@ -206,187 +222,85 @@ export type ListingInquiryInput = {
 };
 
 export const LISTING_SORT_VALUES = [
-  "price_asc",
-  "price_desc",
-  "created_desc",
+  'price_asc',
+  'price_desc',
+  'created_desc',
 ] as const;
 export type ListingSort = (typeof LISTING_SORT_VALUES)[number];
 
-// ============================================================
-// Supabase Database schema
-// ============================================================
-
-export type Json =
-  | string
-  | number
-  | boolean
-  | null
-  | { [key: string]: Json | undefined }
-  | Json[];
-
-type Insertable<T> = Partial<T>;
-type Updatable<T> = Partial<T>;
+// ------------------------------------------------------------
+// Database interface
+// ------------------------------------------------------------
 
 export interface Database {
   public: {
     Tables: {
       profiles: {
         Row: Profile;
-        Insert: Insertable<Profile> & { id: string; phone: string };
-        Update: Updatable<Profile>;
-        Relationships: [];
+        Insert: Omit<Profile, 'created_at'> & { created_at?: string };
+        Update: Partial<Profile>;
       };
       profiles_worker: {
         Row: ProfileWorker;
-        Insert: Insertable<ProfileWorker> & { id: string };
-        Update: Updatable<ProfileWorker>;
-        Relationships: [
-          {
-            foreignKeyName: "profiles_worker_id_fkey";
-            columns: ["id"];
-            isOneToOne: true;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
-          },
-        ];
+        Insert: Omit<ProfileWorker, 'created_at'> & { created_at?: string };
+        Update: Partial<ProfileWorker>;
       };
       jobs: {
         Row: Job;
-        Insert: Insertable<Job> & {
-          client_id: string;
-          title: string;
-          description: string;
-          category: string;
-        };
-        Update: Updatable<Job>;
-        Relationships: [
-          {
-            foreignKeyName: "jobs_client_id_fkey";
-            columns: ["client_id"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "jobs_assigned_worker_id_fkey";
-            columns: ["assigned_worker_id"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
-          },
-        ];
+        Insert: Partial<Job> & { client_id: string; title: string; description: string; category: string };
+        Update: Partial<Job>;
       };
       bids: {
         Row: Bid;
-        Insert: Insertable<Bid> & { job_id: string; worker_id: string };
-        Update: Updatable<Bid>;
-        Relationships: [
-          {
-            foreignKeyName: "bids_job_id_fkey";
-            columns: ["job_id"];
-            isOneToOne: false;
-            referencedRelation: "jobs";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "bids_worker_id_fkey";
-            columns: ["worker_id"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
-          },
-        ];
+        Insert: Partial<Bid> & { job_id: string; worker_id: string };
+        Update: Partial<Bid>;
       };
       offers: {
         Row: Offer;
-        Insert: Insertable<Offer> & {
-          job_id: string;
-          worker_id: string;
-          message: string;
-        };
-        Update: Updatable<Offer>;
-        Relationships: [
-          {
-            foreignKeyName: "offers_job_id_fkey";
-            columns: ["job_id"];
-            isOneToOne: false;
-            referencedRelation: "jobs";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "offers_worker_id_fkey";
-            columns: ["worker_id"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
-          },
-        ];
+        Insert: Partial<Offer> & { job_id: string; worker_id: string; message: string };
+        Update: Partial<Offer>;
       };
       reviews: {
         Row: Review;
-        Insert: Insertable<Review> & {
-          worker_id: string;
-          author_id: string;
-          rating: number;
-        };
-        Update: Updatable<Review>;
-        Relationships: [
-          {
-            foreignKeyName: "reviews_worker_id_fkey";
-            columns: ["worker_id"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "reviews_author_id_fkey";
-            columns: ["author_id"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
-          },
-        ];
+        Insert: Partial<Review> & { worker_id: string; author_id: string; rating: number };
+        Update: Partial<Review>;
       };
       notifications: {
         Row: Notification;
-        Insert: Insertable<Notification> & {
-          user_id: string;
-          type: string;
-          title: string;
-        };
-        Update: Updatable<Notification>;
-        Relationships: [];
+        Insert: Partial<Notification> & { user_id: string; type: string; title: string };
+        Update: Partial<Notification>;
       };
       listing_inquiries: {
         Row: ListingInquiryInput & { id: string; created_at: string };
         Insert: ListingInquiryInput;
-        Update: Updatable<ListingInquiryInput>;
-        Relationships: [];
+        Update: Partial<ListingInquiryInput>;
       };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
-    Enums: {
-      user_role: UserRole;
-      job_status: JobStatus;
-      offer_status: OfferStatus;
+    Functions: {
+      create_notification: {
+        Args: {
+          p_user_id: string;
+          p_type: string;
+          p_title: string;
+          p_body: string;
+          p_link?: string | null;
+        };
+        Returns: void;
+      };
     };
-    CompositeTypes: Record<string, never>;
+    Enums: Record<string, never>;
   };
 }
 
-export type JobRow = Database["public"]["Tables"]["jobs"]["Row"];
-export type JobInsert = Database["public"]["Tables"]["jobs"]["Insert"];
-export type JobUpdate = Database["public"]["Tables"]["jobs"]["Update"];
+export type JobRow = Database['public']['Tables']['jobs']['Row'];
+export type JobInsert = Database['public']['Tables']['jobs']['Insert'];
+export type JobUpdate = Database['public']['Tables']['jobs']['Update'];
 
-export type OfferRow = Database["public"]["Tables"]["offers"]["Row"];
-export type OfferInsert = Database["public"]["Tables"]["offers"]["Insert"];
+export type BidRow = Database['public']['Tables']['bids']['Row'];
+export type BidInsert = Database['public']['Tables']['bids']['Insert'];
 
-export type BidRow = Database["public"]["Tables"]["bids"]["Row"];
-export type BidInsert = Database["public"]["Tables"]["bids"]["Insert"];
+export type ProfileRow = Database['public']['Tables']['profiles']['Row'];
+export type ProfileWorkerRow = Database['public']['Tables']['profiles_worker']['Row'];
 
-export type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
-export type ProfileWorkerRow =
-  Database["public"]["Tables"]["profiles_worker"]["Row"];
-
-export type ReviewRow = Database["public"]["Tables"]["reviews"]["Row"];
+export type ReviewRow = Database['public']['Tables']['reviews']['Row'];
