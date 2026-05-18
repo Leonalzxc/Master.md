@@ -6,7 +6,14 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "lint:fix": "eslint --fix",
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "i18n:check": "npx tsx scripts/i18n-sync-check.ts",
+    "supabase:check": "node scripts/check-supabase-client.js",
+    "quality": "bash scripts/quality-gate.sh"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -31,7 +38,9 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.5",
+    "prettier": "^3.8.3",
     "tailwindcss": "^4",
+    "tsx": "^4.22.2",
     "typescript": "^5"
   }
 }

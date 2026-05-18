@@ -1,1 +1,0 @@
-echo "===== 4. GIT LOG =====" && git log --oneline -10 && echo "" && echo "--- branch ---" && git branch --show-current
