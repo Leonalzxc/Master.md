@@ -1,1 +1,1 @@
-echo "===== ИТОГ =====" && git log --oneline -8 && echo "" && echo "--- branch ---" && git branch --show-current
+echo "===== ИТОГ =====" && git log --oneline -5 && echo "" && echo "--- branch ---" && git branch --show-current
