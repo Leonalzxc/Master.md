@@ -18,26 +18,33 @@ export async function createJob(formData: {
   locale: string;
 }) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect(`/${formData.locale}/auth?next=/${formData.locale}/request/new`);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user)
+    redirect(`/${formData.locale}/auth?next=/${formData.locale}/request/new`);
 
   const budgetNum = formData.budget ? parseFloat(formData.budget) : null;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase.from('jobs') as any).insert({
-    client_id: user.id,
-    category: formData.category,
-    description: formData.description.trim(),
-    city: formData.city,
-    area: formData.area,
-    lat: formData.lat,
-    lng: formData.lng,
-    budget_min: budgetNum,
-    urgent: formData.urgent,
-    needs_quote: formData.needsQuote,
-    photos: formData.photos.length > 0 ? formData.photos : null,
-    status: 'active',
-  }).select('id').single();
+  const { data, error } = await supabase
+    .from('jobs')
+    .insert({
+      client_id: user.id,
+      title: formData.description.trim().slice(0, 80),
+      category: formData.category,
+      description: formData.description.trim(),
+      city: formData.city,
+      area: formData.area,
+      lat: formData.lat,
+      lng: formData.lng,
+      budget_min: budgetNum,
+      urgent: formData.urgent,
+      needs_quote: formData.needsQuote,
+      photos: formData.photos.length > 0 ? formData.photos : null,
+      status: 'active',
+    })
+    .select('id')
+    .single();
 
   if (error) throw new Error(error.message);
 

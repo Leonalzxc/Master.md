@@ -135,6 +135,21 @@ export type Review = {
 };
 
 // ------------------------------------------------------------
+// Notifications
+// ------------------------------------------------------------
+
+export type Notification = {
+  id: string;
+  user_id: string;
+  type: string;
+  title: string;
+  body: string;
+  link: string | null;
+  read: boolean;
+  created_at: string;
+};
+
+// ------------------------------------------------------------
 // Sorting helpers
 // ------------------------------------------------------------
 
@@ -201,7 +216,7 @@ export type ListingSort = (typeof LISTING_SORT_VALUES)[number];
 // Supabase Database schema
 // ============================================================
 
-type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -212,7 +227,7 @@ type Json =
 type Insertable<T> = Partial<T>;
 type Updatable<T> = Partial<T>;
 
-export type Database = {
+export interface Database {
   public: {
     Tables: {
       profiles: {
@@ -332,6 +347,16 @@ export type Database = {
           },
         ];
       };
+      notifications: {
+        Row: Notification;
+        Insert: Insertable<Notification> & {
+          user_id: string;
+          type: string;
+          title: string;
+        };
+        Update: Updatable<Notification>;
+        Relationships: [];
+      };
       listing_inquiries: {
         Row: ListingInquiryInput & { id: string; created_at: string };
         Insert: ListingInquiryInput;
@@ -348,7 +373,7 @@ export type Database = {
     };
     CompositeTypes: Record<string, never>;
   };
-};
+}
 
 export type JobRow = Database["public"]["Tables"]["jobs"]["Row"];
 export type JobInsert = Database["public"]["Tables"]["jobs"]["Insert"];
@@ -365,5 +390,3 @@ export type ProfileWorkerRow =
   Database["public"]["Tables"]["profiles_worker"]["Row"];
 
 export type ReviewRow = Database["public"]["Tables"]["reviews"]["Row"];
-
-export type { Json };
