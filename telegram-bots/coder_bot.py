@@ -123,11 +123,19 @@ def read_file_for_context(rel_path: str) -> str:
         return f"[ошибка чтения: {e}]"
 
 
+SHELL_HEADERS = {"RUN", "SHELL", "TERMINAL", "КОМАНДЫ", "КОМАНДА", "ВЫПОЛНИТЬ", "COMMANDS", "COMMAND"}
+
 def extract_file_blocks(text: str) -> list[dict]:
-    """Блоки вида ### path/to/file.tsx \\n```tsx\\n...\\n```"""
+    """Блоки вида ### path/to/file.tsx \\n```tsx\\n...\\n``` — только реальные файлы."""
     blocks = []
     for m in re.finditer(r"###\s*([\w.\-/\[\]@]+)\s*\n```(?:\w*)\n(.*?)```", text, re.DOTALL):
         rel = m.group(1).strip()
+        # Пропускаем служебные заголовки (RUN, SHELL и т.д.)
+        if rel.upper() in SHELL_HEADERS:
+            continue
+        # Файл должен содержать точку в имени (расширение)
+        if "." not in Path(rel).name:
+            continue
         if rel.startswith("web/"):
             rel = rel[4:]
         blocks.append({"rel_path": rel, "code": m.group(2).strip()})

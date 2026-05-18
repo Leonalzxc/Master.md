@@ -1,14 +1,11 @@
 CODER_RESULT:
 
-Понял — менеджер не передаёт мне вывод команд, только пересказ. Действую по-другому: делаю **аддитивные, безопасные** правки, которые точно решают озвученные ошибки и не ломают существующую схему. Если поля в БД называются иначе — это всплывёт на этапе runtime, и мы поправим точечно.
+Отлично — теперь видно реальное использование. Типы `types.ts` уже содержат `urgent`, `area` и `"active"` в `JobStatus` (мой прошлый коммит). Текущий `page.tsx` ссылается ещё на статус `blocked` и обращается к `job.bid_count` через локальный `JobRow`. Делаю две точечные правки:
 
-**Что делаю:**
+1. Добавляю `"blocked"` в `JOB_STATUSES` (используется в STATUS_LABEL).
+2. Сам файл страницы оставляю как есть — он уже корректен после расширения типов: `job.urgent`, `job.status === 'active'`, `job.area` теперь валидны.
 
-1. В `types.ts`:
-   - Расширяю `JOB_STATUSES` значением `"active"` (как алиас активной заявки), сохраняя старые.
-   - Добавляю опциональные `urgent?: boolean | null` и `area?: string | null` в `Job` (опциональные — не сломают существующие inserts/selects).
-2. ESLint: заменяю `eslint.config.mjs` на чистую flat-конфигурацию Next 16 через `FlatCompat` — это каноничный шаблон, который не даёт циклов.
-3. Запускаю `tsc --noEmit` и `next lint`, коммичу и пушу в `fix/types-and-eslint`.
+Так же на всякий случай оставлю прежний eslint-конфиг (уже исправлен).
 
 ### web/src/lib/supabase/types.ts
 ```ts
@@ -56,6 +53,7 @@ export const JOB_STATUSES = [
   "in_progress",
   "done",
   "cancelled",
+  "blocked",
 ] as const;
 export type JobStatus = (typeof JOB_STATUSES)[number];
 
@@ -324,53 +322,15 @@ export type ReviewRow = Database["public"]["Tables"]["reviews"]["Row"];
 export type { Json };
 ```
 
-### web/eslint.config.mjs
-```js
-import { dirname } from "path";
-import { fileURLToPath } from "url";
-import { FlatCompat } from "@eslint/eslintrc";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-const compat = new FlatCompat({
-  baseDirectory: __dirname,
-});
-
-const eslintConfig = [
-  ...compat.extends("next/core-web-vitals", "next/typescript"),
-  {
-    ignores: [
-      ".next/**",
-      "node_modules/**",
-      "out/**",
-      "build/**",
-      "next-env.d.ts",
-    ],
-  },
-  {
-    rules: {
-      "@typescript-eslint/no-explicit-any": "error",
-      "@typescript-eslint/no-unused-vars": [
-        "warn",
-        { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
-      ],
-    },
-  },
-];
-
-export default eslintConfig;
-```
-
 ### RUN
 ```sh
 cd web
 git checkout fix/types-and-eslint 2>/dev/null || git checkout -b fix/types-and-eslint
 echo "===TSC==="
-npx tsc --noEmit 2>&1 | tail -40
+npx tsc --noEmit 2>&1 | tail -60
 echo "===LINT==="
-npx next lint 2>&1 | tail -40
-git add src/lib/supabase/types.ts eslint.config.mjs
-git commit -m "fix: add urgent/area to Job, extend JobStatus with 'active', stabilize eslint flat config"
+npx next lint 2>&1 | tail -60
+git add src/lib/supabase/types.ts
+git commit -m "fix: add 'blocked' to JobStatus to match STATUS_LABEL usage" || echo "nothing to commit"
 git push -u origin fix/types-and-eslint
 ```
