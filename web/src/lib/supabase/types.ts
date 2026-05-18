@@ -307,27 +307,6 @@ export type Database = {
           },
         ];
       };
-      bids: {
-        Row: Bid;
-        Insert: Insertable<Bid> & { job_id: string; worker_id: string };
-        Update: Updatable<Bid>;
-        Relationships: [
-          {
-            foreignKeyName: "bids_job_id_fkey";
-            columns: ["job_id"];
-            isOneToOne: false;
-            referencedRelation: "jobs";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "bids_worker_id_fkey";
-            columns: ["worker_id"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
       reviews: {
         Row: Review;
         Insert: Insertable<Review> & {
