@@ -1,42 +1,43 @@
 CODER_RESULT:
 
-Действую без запроса — исправляю всё разом. Читаю файлы, привожу типы в `types.ts` в соответствие с миграциями (добавляю `urgent`, `area`, нормализую статусы), упрощаю ESLint config до плоской рабочей конфигурации Next.js, чтобы убрать циклическую структуру.
+Нужен ещё один последний разведзапуск — без вывода миграций и реальных ошибок `tsc` я добавлю поля наугад. Запускаю минимальный набор команд (без обрезки), чтобы точно увидеть SQL-схему и список ошибок типов.
 
 ### RUN
 ```sh
 cd web
-git checkout -b fix/types-and-eslint 2>/dev/null || git checkout fix/types-and-eslint
-echo "===== MIGRATIONS LIST ====="
-ls supabase/migrations/ 2>/dev/null || echo "no migrations dir"
-echo "===== MIGRATIONS CONTENT ====="
-for f in supabase/migrations/*.sql; do echo "--- $f ---"; cat "$f"; done
-echo "===== types.ts ====="
-cat src/lib/supabase/types.ts
-echo "===== eslint config ====="
-ls -la | grep -i eslint
+git checkout fix/types-and-eslint 2>/dev/null || git checkout -b fix/types-and-eslint
+echo "===PWD==="; pwd
+echo "===TREE supabase==="
+find supabase -type f 2>/dev/null
+echo "===MIGRATIONS==="
+for f in supabase/migrations/*.sql; do
+  echo "######## $f ########"
+  cat "$f"
+done
+echo "===END MIGRATIONS==="
+echo "===types.ts FULL==="
+wc -l src/lib/supabase/types.ts
+sed -n '1,400p' src/lib/supabase/types.ts
+echo "===ESLINT FILES==="
+ls -la eslint.config.* .eslintrc* 2>/dev/null
+echo "---eslint.config.mjs---"
 cat eslint.config.mjs 2>/dev/null
+echo "---eslint.config.js---"
 cat eslint.config.js 2>/dev/null
-cat .eslintrc.json 2>/dev/null
-cat .eslintrc.js 2>/dev/null
-echo "===== package.json ====="
+echo "===package.json==="
 cat package.json
-echo "===== grep status/urgent/area ====="
-grep -rn "status\|urgent\|area" src/lib/supabase/ src/app/ src/components/ 2>/dev/null | grep -v node_modules | head -80
-echo "===== tsc check ====="
-npx tsc --noEmit 2>&1 | head -40
-echo "===== eslint check ====="
-npx next lint 2>&1 | head -40
+echo "===TSC ERRORS==="
+npx tsc --noEmit 2>&1 | head -80
+echo "===LINT ERRORS==="
+npx next lint 2>&1 | head -60
+echo "===GREP urgent/area in src==="
+grep -rn "\.urgent\|\.area\b\|status: \"active\"\|=== \"active\"" src/ 2>/dev/null | head -40
 ```
 
-CODER_QUERY: Менеджер, я не могу применять точечные правки в `types.ts` и ESLint config вслепую — иначе сломаю существующие поля и плагины. Команды выше — единственный запуск разведки, они выводят:
+CODER_QUERY: Менеджер, твоё прошлое сообщение обрезало вывод `types.ts` на середине и **не содержало вообще миграций, ESLint-конфига и ошибок tsc/lint** — именно того, ради чего я просил запуск. Без этих данных любые мои правки будут гаданием: я могу:
 
-1. содержимое всех миграций (источник истины для статусов/полей),
-2. текущий `types.ts`,
-3. текущий конфиг ESLint (чтобы найти источник цикла),
-4. `package.json` и реальные ошибки `tsc` + `next lint`.
+- добавить `urgent: boolean` и `area: string | null` в `Job`, но в схеме БД поля могут называться иначе (`is_urgent`, `area_id`),
+- сменить `JobStatus` на `"active" | …`, но статусы в БД могут быть совсем другими,
+- переписать `eslint.config.mjs`, но не вижу что именно вызывает цикл.
 
-Пожалуйста, пришли вывод этого RUN-блока одним сообщением. Сразу после этого я в одном ответе:
-- обновлю `src/lib/supabase/types.ts` (типы статусов + `urgent`, `area` и любые другие расхождения),
-- заменю `eslint.config.mjs` на корректную flat-конфигурацию `next/core-web-vitals` + `next/typescript` без циклов,
-- запущу `tsc --noEmit` и `next lint` для проверки,
-- закоммичу и запушу в `fix/types-and-eslint`.
+Пожалуйста, выполни RUN-блок выше и пришли **полный, необрезанный** вывод (особенно `######## migrations ########`, `===TSC ERRORS===`, `===LINT ERRORS===`). После этого — обещаю — в следующем ответе будут только финальные блоки файлов и коммит/пуш в `fix/types-and-eslint`, без новых вопросов.

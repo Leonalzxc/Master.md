@@ -1,10 +1,22 @@
+cd web
 git checkout -b fix/types-and-eslint 2>/dev/null || git checkout fix/types-and-eslint
-ls web/supabase/migrations/
-cat web/src/lib/supabase/types.ts
-echo "---ESLINT---"
-cat web/eslint.config.mjs 2>/dev/null || cat web/.eslintrc.json 2>/dev/null || echo "no eslint config"
-echo "---MIGRATIONS---"
-for f in web/supabase/migrations/*.sql; do echo "=== $f ==="; cat "$f"; done
-echo "---GREP STATUS---"
-grep -rn "status" web/src/lib/supabase/types.ts web/supabase/migrations/ 2>/dev/null
-grep -rn "urgent\|area" web/src/ web/supabase/migrations/ 2>/dev/null | head -50
+echo "===== MIGRATIONS LIST ====="
+ls supabase/migrations/ 2>/dev/null || echo "no migrations dir"
+echo "===== MIGRATIONS CONTENT ====="
+for f in supabase/migrations/*.sql; do echo "--- $f ---"; cat "$f"; done
+echo "===== types.ts ====="
+cat src/lib/supabase/types.ts
+echo "===== eslint config ====="
+ls -la | grep -i eslint
+cat eslint.config.mjs 2>/dev/null
+cat eslint.config.js 2>/dev/null
+cat .eslintrc.json 2>/dev/null
+cat .eslintrc.js 2>/dev/null
+echo "===== package.json ====="
+cat package.json
+echo "===== grep status/urgent/area ====="
+grep -rn "status\|urgent\|area" src/lib/supabase/ src/app/ src/components/ 2>/dev/null | grep -v node_modules | head -80
+echo "===== tsc check ====="
+npx tsc --noEmit 2>&1 | head -40
+echo "===== eslint check ====="
+npx next lint 2>&1 | head -40
