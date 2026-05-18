@@ -2,6 +2,8 @@
 // Core domain types for MASTER Moldova
 // ============================================================
 
+export type { Category } from "@/lib/mock/data";
+
 export type UserRole = "client" | "worker" | "admin";
 
 export type Profile = {
@@ -27,7 +29,11 @@ export type ProfileWorker = {
   rating_avg: number;
   rating_count: number;
   portfolio: string[];
+  photos: string[] | null;
   price_hint: string | null;
+  viber: string | null;
+  telegram: string | null;
+  whatsapp: string | null;
   created_at?: string;
   updated_at?: string | null;
 };
