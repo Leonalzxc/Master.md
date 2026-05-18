@@ -67,7 +67,9 @@ export type Job = {
   budget_max: number | null;
   currency: string;
   images: string[];
+  photos: string[] | null;
   urgent: boolean;
+  needs_quote: boolean | null;
   status: JobStatus;
   assigned_worker_id: string | null;
   created_at: string;
@@ -94,6 +96,26 @@ export type Offer = {
   currency: string;
   message: string;
   status: OfferStatus;
+  created_at: string;
+  updated_at?: string | null;
+};
+
+// ------------------------------------------------------------
+// Bids (отклики мастеров на заявки)
+// ------------------------------------------------------------
+
+export const BID_STATUSES = ["sent", "selected", "rejected"] as const;
+export type BidStatus = (typeof BID_STATUSES)[number];
+
+export type Bid = {
+  id: string;
+  job_id: string;
+  worker_id: string;
+  price: number | null;
+  price_max: number | null;
+  comment: string | null;
+  start_date: string | null;
+  status: BidStatus;
   created_at: string;
   updated_at?: string | null;
 };
@@ -264,6 +286,27 @@ export type Database = {
           },
         ];
       };
+      bids: {
+        Row: Bid;
+        Insert: Insertable<Bid> & { job_id: string; worker_id: string };
+        Update: Updatable<Bid>;
+        Relationships: [
+          {
+            foreignKeyName: "bids_job_id_fkey";
+            columns: ["job_id"];
+            isOneToOne: false;
+            referencedRelation: "jobs";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "bids_worker_id_fkey";
+            columns: ["worker_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       reviews: {
         Row: Review;
         Insert: Insertable<Review> & {
@@ -288,6 +331,12 @@ export type Database = {
             referencedColumns: ["id"];
           },
         ];
+      };
+      listing_inquiries: {
+        Row: ListingInquiryInput & { id: string; created_at: string };
+        Insert: ListingInquiryInput;
+        Update: Updatable<ListingInquiryInput>;
+        Relationships: [];
       };
     };
     Views: Record<string, never>;

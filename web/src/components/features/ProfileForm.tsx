@@ -25,7 +25,7 @@ export default function ProfileForm({ locale, profile, workerProfile, telegramCo
   const [name, setName] = useState(profile.name ?? '');
   const [city, setCity] = useState(profile.city ?? '');
   const [bio, setBio] = useState(workerProfile?.bio ?? '');
-  const [categories, setCategories] = useState<Category[]>(workerProfile?.categories ?? []);
+  const [categories, setCategories] = useState<Category[]>((workerProfile?.categories ?? []) as Category[]);
   const [areas, setAreas] = useState<string[]>(workerProfile?.areas ?? []);
   const [experienceYrs, setExperienceYrs] = useState(String(workerProfile?.experience_yrs ?? ''));
   const [viber, setViber] = useState(workerProfile?.viber ?? '');

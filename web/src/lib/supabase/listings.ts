@@ -8,9 +8,10 @@ import type {
 export async function getListingById(id: string): Promise<Listing | null> {
   const supabase = await createClient();
 
-  const { data, error } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any)
     .rpc("get_listing_by_id", { p_id: id })
-    .maybeSingle<Listing>();
+    .maybeSingle();
 
   if (error) {
     console.error("[getListingById] supabase error:", error.message);
@@ -32,7 +33,8 @@ export async function listListings(
 ): Promise<ListingListItem[]> {
   const supabase = await createClient();
 
-  const { data, error } = await supabase.rpc("list_listings", {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any).rpc("list_listings", {
     p_city: params.city ?? null,
     p_sort: params.sort ?? "created_desc",
     p_limit: params.limit ?? 60,
@@ -50,7 +52,8 @@ export async function listListings(
 export async function listListingCities(): Promise<string[]> {
   const supabase = await createClient();
 
-  const { data, error } = await supabase.rpc("list_listing_cities");
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any).rpc("list_listing_cities");
 
   if (error) {
     console.error("[listListingCities] supabase error:", error.message);
