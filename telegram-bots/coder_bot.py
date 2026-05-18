@@ -71,17 +71,15 @@ def git_backup(label: str = "backup") -> str:
     env["GIT_COMMITTER_NAME"]  = GIT_USER_NAME
     env["GIT_COMMITTER_EMAIL"] = GIT_USER_EMAIL
 
-    repo_root = PROJECT_DIR.parent  # git-репо на уровень выше web/
+    repo_root = PROJECT_DIR.parent
+    # Только файлы проекта, без секретов и мусора
     result = subprocess.run(
-        f'git add -A && git diff --cached --quiet || git commit -m "backup: {label} @ {ts}"',
+        f'git add web/ scripts/ telegram-bots/*.py && '
+        f'git diff --cached --quiet || git commit -m "backup: {label} @ {ts}"',
         shell=True, capture_output=True, text=True, cwd=repo_root, env=env,
     )
-    if result.returncode == 0 and "backup:" in (result.stdout + result.stderr):
-        msg = result.stdout.strip() or result.stderr.strip()
-        logger.info("Бэкап создан: %s", msg)
-        return msg
-    logger.info("Бэкап: нечего коммитить (чисто)")
-    return "nothing to backup"
+    logger.info("Бэкап: %s", (result.stdout + result.stderr).strip()[:100])
+    return "ok"
 
 
 def run_command(cmd: str, cwd: Path = PROJECT_DIR) -> tuple[bool, str]:
