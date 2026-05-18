@@ -2,6 +2,8 @@
 // Core domain types for MASTER Moldova
 // ============================================================
 
+export type { Category } from "@/lib/mock/data";
+
 export type UserRole = "client" | "worker" | "admin";
 
 export type Profile = {
@@ -27,7 +29,11 @@ export type ProfileWorker = {
   rating_avg: number;
   rating_count: number;
   portfolio: string[];
+  photos: string[] | null;
   price_hint: string | null;
+  viber: string | null;
+  telegram: string | null;
+  whatsapp: string | null;
   created_at?: string;
   updated_at?: string | null;
 };
@@ -61,9 +67,31 @@ export type Job = {
   budget_max: number | null;
   currency: string;
   images: string[];
+  photos: string[] | null;
   urgent: boolean;
+  needs_quote: boolean | null;
   status: JobStatus;
   assigned_worker_id: string | null;
+  created_at: string;
+  updated_at?: string | null;
+};
+
+// ------------------------------------------------------------
+// Bids (отклики мастеров на заявки)
+// ------------------------------------------------------------
+
+export const BID_STATUSES = ["sent", "selected", "rejected"] as const;
+export type BidStatus = (typeof BID_STATUSES)[number];
+
+export type Bid = {
+  id: string;
+  job_id: string;
+  worker_id: string;
+  price: number | null;
+  price_max: number | null;
+  comment: string | null;
+  start_date: string | null;
+  status: BidStatus;
   created_at: string;
   updated_at?: string | null;
 };
@@ -233,6 +261,27 @@ export type Database = {
           },
         ];
       };
+      bids: {
+        Row: Bid;
+        Insert: Insertable<Bid> & { job_id: string; worker_id: string };
+        Update: Updatable<Bid>;
+        Relationships: [
+          {
+            foreignKeyName: "bids_job_id_fkey";
+            columns: ["job_id"];
+            isOneToOne: false;
+            referencedRelation: "jobs";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "bids_worker_id_fkey";
+            columns: ["worker_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       offers: {
         Row: Offer;
         Insert: Insertable<Offer> & {
@@ -283,6 +332,12 @@ export type Database = {
           },
         ];
       };
+      listing_inquiries: {
+        Row: ListingInquiryInput & { id: string; created_at: string };
+        Insert: ListingInquiryInput;
+        Update: Updatable<ListingInquiryInput>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
@@ -301,6 +356,9 @@ export type JobUpdate = Database["public"]["Tables"]["jobs"]["Update"];
 
 export type OfferRow = Database["public"]["Tables"]["offers"]["Row"];
 export type OfferInsert = Database["public"]["Tables"]["offers"]["Insert"];
+
+export type BidRow = Database["public"]["Tables"]["bids"]["Row"];
+export type BidInsert = Database["public"]["Tables"]["bids"]["Insert"];
 
 export type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
 export type ProfileWorkerRow =
