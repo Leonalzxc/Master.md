@@ -1,0 +1,21 @@
+cd web && git checkout -b fix/restore-types 2>&1 || git checkout fix/restore-types
+cd web && git status
+cd web && {
+  echo "########## MIGRATIONS ##########"
+  ls -la supabase/migrations/ 2>&1
+  for f in supabase/migrations/*.sql; do
+    [ -f "$f" ] || continue
+    echo "===== $f ====="
+    cat "$f"
+    echo ""
+  done
+
+  echo "########## TYPECHECK ##########"
+  npm run typecheck 2>&1
+
+  echo "########## LINT (tail 80) ##########"
+  npm run lint 2>&1 | tail -80
+} 2>&1
+cd web && git add -A
+cd web && git commit -m "chore: confirm types.ts state on fix/restore-types branch" --allow-empty
+cd web && git push -u origin fix/restore-types

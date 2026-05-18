@@ -1,0 +1,19 @@
+CODER_RESULT:
+
+Анализирую миграции и существующие типы, исправляю несоответствия. Сначала прочитаю текущее состояние.
+
+### RUN
+```sh
+git checkout -b fix/types-and-eslint 2>/dev/null || git checkout fix/types-and-eslint
+ls web/supabase/migrations/
+cat web/src/lib/supabase/types.ts
+echo "---ESLINT---"
+cat web/eslint.config.mjs 2>/dev/null || cat web/.eslintrc.json 2>/dev/null || echo "no eslint config"
+echo "---MIGRATIONS---"
+for f in web/supabase/migrations/*.sql; do echo "=== $f ==="; cat "$f"; done
+echo "---GREP STATUS---"
+grep -rn "status" web/src/lib/supabase/types.ts web/supabase/migrations/ 2>/dev/null
+grep -rn "urgent\|area" web/src/ web/supabase/migrations/ 2>/dev/null | head -50
+```
+
+CODER_QUERY: Мне нужно увидеть актуальное содержимое миграций и файла `types.ts`, чтобы корректно синхронизировать типы (статусы, поля `urgent`, `area`) без догадок. Пожалуйста, запусти команды выше и пришли результат — после этого я применю точечные правки в `types.ts`, исправлю конфиг ESLint и закоммичу в ветку `fix/types-and-eslint`.

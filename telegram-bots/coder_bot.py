@@ -39,61 +39,67 @@ claude_client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 conversation_history: list[dict] = []
 MAX_HISTORY = 40
 
-# ─── Безопасность: разрешённые префиксы команд ────────────────────────────────
-ALLOWED_COMMANDS = {
-    "git", "npm", "npx", "node", "tsc",
-    "supabase", "mkdir", "cp", "mv", "touch",
-    "cat", "ls", "find", "grep", "echo",
-    "python", "python3", "pip", "pip3",
-}
+# ─── Только самое опасное блокируем ──────────────────────────────────────────
 BLOCKED_PATTERNS = [
-    r"rm\s+-rf\s+/",      # rm -rf /
-    r"sudo",
-    r"chmod\s+777",
-    r">\s*/dev/",
-    r"curl.*\|\s*sh",     # curl | sh
-    r"wget.*\|\s*sh",
+    r"\brm\s+(-rf?|--recursive)\s+/",   # rm -rf /  (удаление корня)
+    r"\brm\s+(-rf?|--recursive)\s+~",   # rm -rf ~  (удаление домашней папки)
+    r"\bsudo\b",                          # sudo
+    r"curl\s+.*\|\s*(ba)?sh",            # curl | sh
+    r"wget\s+.*\|\s*(ba)?sh",            # wget | sh
+    r">\s*/dev/sd",                       # перезапись блочных устройств
+    r"mkfs\.",                            # форматирование дисков
 ]
 
 
 def is_safe_command(cmd: str) -> tuple[bool, str]:
-    cmd_stripped = cmd.strip()
-    if not cmd_stripped or cmd_stripped.startswith("#"):
+    cmd = cmd.strip()
+    if not cmd or cmd.startswith("#"):
         return True, ""
     for pattern in BLOCKED_PATTERNS:
-        if re.search(pattern, cmd_stripped):
-            return False, f"Заблокировано по соображениям безопасности: `{cmd_stripped}`"
-    try:
-        parts = shlex.split(cmd_stripped)
-    except ValueError:
-        parts = cmd_stripped.split()
-    base = parts[0] if parts else ""
-    if base not in ALLOWED_COMMANDS:
-        return False, f"Команда `{base}` не в списке разрешённых."
+        if re.search(pattern, cmd):
+            return False, f"🚫 Заблокировано: `{cmd}`"
     return True, ""
 
 
+def git_backup(label: str = "backup") -> str:
+    """Создаёт git-коммит со снимком текущего состояния проекта."""
+    from datetime import datetime
+    ts = datetime.now().strftime("%H:%M:%S")
+    env = os.environ.copy()
+    env["GIT_AUTHOR_NAME"]     = GIT_USER_NAME
+    env["GIT_AUTHOR_EMAIL"]    = GIT_USER_EMAIL
+    env["GIT_COMMITTER_NAME"]  = GIT_USER_NAME
+    env["GIT_COMMITTER_EMAIL"] = GIT_USER_EMAIL
+
+    repo_root = PROJECT_DIR.parent  # git-репо на уровень выше web/
+    result = subprocess.run(
+        f'git add -A && git diff --cached --quiet || git commit -m "backup: {label} @ {ts}"',
+        shell=True, capture_output=True, text=True, cwd=repo_root, env=env,
+    )
+    if result.returncode == 0 and "backup:" in (result.stdout + result.stderr):
+        msg = result.stdout.strip() or result.stderr.strip()
+        logger.info("Бэкап создан: %s", msg)
+        return msg
+    logger.info("Бэкап: нечего коммитить (чисто)")
+    return "nothing to backup"
+
+
 def run_command(cmd: str, cwd: Path = PROJECT_DIR) -> tuple[bool, str]:
-    """Выполняет одну shell-команду и возвращает (успех, вывод)."""
+    """Выполняет shell-команду. Блокирует только деструктивные системные команды."""
     safe, reason = is_safe_command(cmd)
     if not safe:
         return False, reason
 
     env = os.environ.copy()
-    env["GIT_AUTHOR_NAME"]    = GIT_USER_NAME
-    env["GIT_AUTHOR_EMAIL"]   = GIT_USER_EMAIL
-    env["GIT_COMMITTER_NAME"] = GIT_USER_NAME
-    env["GIT_COMMITTER_EMAIL"]= GIT_USER_EMAIL
+    env["GIT_AUTHOR_NAME"]     = GIT_USER_NAME
+    env["GIT_AUTHOR_EMAIL"]    = GIT_USER_EMAIL
+    env["GIT_COMMITTER_NAME"]  = GIT_USER_NAME
+    env["GIT_COMMITTER_EMAIL"] = GIT_USER_EMAIL
 
     try:
         result = subprocess.run(
-            cmd,
-            shell=True,
-            capture_output=True,
-            text=True,
-            timeout=EXEC_TIMEOUT,
-            cwd=cwd,
-            env=env,
+            cmd, shell=True, capture_output=True,
+            text=True, timeout=EXEC_TIMEOUT, cwd=cwd, env=env,
         )
         output = (result.stdout + result.stderr).strip()
         return result.returncode == 0, output or "(нет вывода)"
@@ -128,28 +134,50 @@ def extract_file_blocks(text: str) -> list[dict]:
     return blocks
 
 
+SHELL_PREFIXES = ("git ", "npm ", "npx ", "node ", "tsc ", "supabase ", "mkdir ", "cp ", "mv ", "touch ", "bash ", "python ", "pip ")
+
 def extract_shell_blocks(text: str) -> list[str]:
-    """Извлекает команды из блоков ### RUN / ### SHELL / ### КОМАНДЫ.
-    Также ловит блоки без заголовка если внутри есть git/npm/npx."""
+    """Ловит shell-команды из ответа Claude любым способом."""
     lines: list[str] = []
 
-    # Основной вариант: ### RUN (или SHELL, КОМАНДЫ, TERMINAL)
+    # Вариант 1: ### RUN / SHELL / TERMINAL / КОМАНДЫ (любой регистр)
     for m in re.finditer(
-        r"###\s*(?:RUN|SHELL|TERMINAL|КОМАНДЫ?|ВЫПОЛНИТЬ?)\s*\n```[^\n]*\n(.*?)```",
-        text,
-        re.DOTALL | re.IGNORECASE,
+        r"###\s*(?:RUN|SHELL|TERMINAL|КОМАНДЫ?|ВЫПОЛНИТЬ?|COMMANDS?)\s*\n```[^\n]*\n(.*?)```",
+        text, re.DOTALL | re.IGNORECASE,
     ):
         for line in m.group(1).splitlines():
             line = line.strip()
             if line and not line.startswith("#"):
                 lines.append(line)
+    if lines:
+        return lines
 
-    # Запасной: любой ```sh / ```bash блок с git или npm внутри
-    if not lines:
-        for m in re.finditer(r"```(?:sh|bash|shell)\n(.*?)```", text, re.DOTALL):
-            block_lines = [l.strip() for l in m.group(1).splitlines() if l.strip() and not l.strip().startswith("#")]
-            if any(l.startswith(("git ", "npm ", "npx ", "supabase ")) for l in block_lines):
-                lines.extend(block_lines)
+    # Вариант 2: любой ```sh / ```bash / ```shell блок
+    for m in re.finditer(r"```(?:sh|bash|shell|zsh)\n(.*?)```", text, re.DOTALL):
+        block = [l.strip() for l in m.group(1).splitlines()
+                 if l.strip() and not l.strip().startswith("#")]
+        if any(l.startswith(SHELL_PREFIXES) for l in block):
+            lines.extend(block)
+    if lines:
+        return lines
+
+    # Вариант 3: любой ``` блок где есть git/npm команды
+    for m in re.finditer(r"```[^\n]*\n(.*?)```", text, re.DOTALL):
+        block = [l.strip() for l in m.group(1).splitlines()
+                 if l.strip() and not l.strip().startswith("#")]
+        if any(l.startswith(SHELL_PREFIXES) for l in block):
+            lines.extend(block)
+    if lines:
+        return lines
+
+    # Вариант 4: строки вне блоков начинающиеся с git/npm (последний шанс)
+    in_code = False
+    for line in text.splitlines():
+        if line.strip().startswith("```"):
+            in_code = not in_code
+            continue
+        if not in_code and line.strip().startswith(SHELL_PREFIXES):
+            lines.append(line.strip())
 
     return lines
 
@@ -270,12 +298,42 @@ async def send_long(update: Update, text: str) -> None:
         await update.message.reply_text(text[i:i + 4000])
 
 
+def inject_file_context(text: str) -> str:
+    """Находит пути файлов в тексте задачи, читает их и добавляет содержимое."""
+    # Ищем пути вида src/..., supabase/..., messages/...
+    pattern = re.findall(r'`?((?:src|supabase|messages|scripts)/[\w./\[\]\-]+\.\w+)`?', text)
+    if not pattern:
+        return text
+
+    found = []
+    for rel_path in dict.fromkeys(pattern):  # убираем дубли
+        fp = PROJECT_DIR / rel_path
+        if fp.exists():
+            try:
+                content = fp.read_text(encoding="utf-8")
+                if len(content) > 6000:
+                    content = content[:6000] + "\n…(обрезано)"
+                found.append(f"\n\n--- ТЕКУЩЕЕ СОДЕРЖИМОЕ {rel_path} ---\n```\n{content}\n```")
+            except Exception:
+                pass
+
+    if found:
+        return text + "\n\nВот текущее содержимое упомянутых файлов:" + "".join(found)
+    return text
+
+
 async def process_and_respond(update: Update, input_text: str) -> None:
-    update_history("user", input_text)
+    enriched = inject_file_context(input_text)
+    if enriched != input_text:
+        logger.info("Добавлен контекст файлов в задачу")
+    update_history("user", enriched)
     reply = call_claude(list(conversation_history))
     update_history("assistant", reply)
 
-    logger.info("Claude ответил (%d симв.). Первые 200: %s", len(reply), reply[:200])
+    # Логируем весь ответ в файл для диагностики
+    log_path = PROJECT_DIR.parent / "coder_last_reply.txt"
+    log_path.write_text(reply, encoding="utf-8")
+    logger.info("Claude ответил (%d симв.). Сохранён в %s", len(reply), log_path)
 
     if not reply.startswith(("CODER_RESULT:", "CODER_QUERY:")):
         reply = f"CODER_RESULT:\n{reply}"
@@ -287,15 +345,20 @@ async def process_and_respond(update: Update, input_text: str) -> None:
 
     report = [reply]
 
-    # 1. Записываем файлы
+    # Бэкап перед любыми изменениями
     file_blocks = extract_file_blocks(reply)
+    shell_cmds  = extract_shell_blocks(reply)
+    if file_blocks or shell_cmds:
+        backup_msg = git_backup("before-coder-changes")
+        logger.info("Бэкап: %s", backup_msg)
+
+    # 1. Записываем файлы
     saved = save_files(file_blocks)
     if saved:
         paths = [str(p.relative_to(PROJECT_DIR)) for p in saved]
         report.append("\n\n📁 Файлы записаны:\n" + "\n".join(f"  • {p}" for p in paths))
 
     # 2. Выполняем shell-команды
-    shell_cmds = extract_shell_blocks(reply)
     logger.info("Найдено команд: %d", len(shell_cmds))
 
     if shell_cmds:
