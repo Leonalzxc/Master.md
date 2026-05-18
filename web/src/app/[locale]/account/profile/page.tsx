@@ -21,7 +21,18 @@ export default async function ProfilePage({ params }: Props) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect(`/${locale}/auth`);
 
-  const { data: rawProfile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+  let { data: rawProfile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+  if (!rawProfile) {
+    // Профиль ещё не создан — создаём минимальную запись
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase as any).from('profiles').upsert({
+      id: user.id,
+      phone: user.phone ?? user.email ?? '',
+      role: 'client',
+    });
+    const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+    rawProfile = data;
+  }
   const profile = rawProfile as (Profile & { telegram_chat_id?: number | null }) | null;
   if (!profile) redirect(`/${locale}/auth`);
 

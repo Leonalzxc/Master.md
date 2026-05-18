@@ -20,7 +20,17 @@ export default async function AccountPage({ params }: Props) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect(`/${locale}/auth`);
 
-  const { data: rawProfile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+  let { data: rawProfile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+  if (!rawProfile) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase as any).from('profiles').upsert({
+      id: user.id,
+      phone: user.phone ?? user.email ?? '',
+      role: 'client',
+    });
+    const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+    rawProfile = data;
+  }
   const profile = rawProfile as Profile | null;
 
   if (!profile) redirect(`/${locale}/auth`);
