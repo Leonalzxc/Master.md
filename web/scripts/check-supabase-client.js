@@ -1,70 +1,54 @@
 #!/usr/bin/env node
 /* eslint-disable @typescript-eslint/no-require-imports */
-const { execSync } = require("child_process");
+/**
+ * Аудит границ Supabase client/server:
+ *  - server-компоненты (без "use client") НЕ должны импортировать @/lib/supabase/client
+ *  - client-компоненты ("use client") НЕ должны импортировать @/lib/supabase/server
+ * Exit 1 при нарушении.
+ */
+const fs = require("fs");
+const path = require("path");
 
-console.log("=== Supabase client/server boundary audit ===\n");
+const SRC = path.join(__dirname, "..", "src");
+const exts = new Set([".ts", ".tsx"]);
 
-let hasViolations = false;
-
-// 1. Server-компоненты (без "use client") не должны импортировать lib/supabase/client
-try {
-  const serverFiles = execSync(
-    `grep -rL '"use client"' src/ --include="*.tsx" --include="*.ts"`,
-    { encoding: "utf8" }
-  )
-    .split("\n")
-    .filter(Boolean);
-
-  const bad = [];
-  for (const f of serverFiles) {
-    try {
-      const content = require("fs").readFileSync(f, "utf8");
-      if (/from\s+["']@\/lib\/supabase\/client["']/.test(content)) {
-        bad.push(f);
-      }
-    } catch {
-      /* ignore */
-    }
+function walk(dir, acc = []) {
+  if (!fs.existsSync(dir)) return acc;
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) walk(full, acc);
+    else if (exts.has(path.extname(entry.name))) acc.push(full);
   }
-
-  if (bad.length) {
-    hasViolations = true;
-    console.log("❌ Server-компоненты используют supabase/client:");
-    bad.forEach((f) => console.log("   " + f));
-  } else {
-    console.log("✓ Server-компоненты: чисто");
-  }
-} catch {
-  console.log("✓ Server-компоненты: чисто (нет совпадений)");
+  return acc;
 }
 
-// 2. Client-компоненты ("use client") не должны импортировать lib/supabase/server
-try {
-  const clientFiles = execSync(
-    `grep -rl '"use client"' src/ --include="*.tsx" --include="*.ts"`,
-    { encoding: "utf8" }
-  )
-    .split("\n")
-    .filter(Boolean);
+const files = walk(SRC);
+const violations = [];
 
-  const bad = [];
-  for (const f of clientFiles) {
-    const content = require("fs").readFileSync(f, "utf8");
-    if (/from\s+["']@\/lib\/supabase\/server["']/.test(content)) {
-      bad.push(f);
-    }
-  }
+for (const file of files) {
+  const content = fs.readFileSync(file, "utf8");
+  const isClient = /^\s*["']use client["']/m.test(content);
+  const importsServer = /from\s+["']@\/lib\/supabase\/server["']/.test(content);
+  const importsClient = /from\s+["']@\/lib\/supabase\/client["']/.test(content);
 
-  if (bad.length) {
-    hasViolations = true;
-    console.log("❌ Client-компоненты используют supabase/server:");
-    bad.forEach((f) => console.log("   " + f));
-  } else {
-    console.log("✓ Client-компоненты: чисто");
+  const rel = path.relative(path.join(__dirname, ".."), file);
+
+  if (isClient && importsServer) {
+    violations.push(`❌ ${rel}: client-компонент импортирует @/lib/supabase/server`);
   }
-} catch {
-  console.log("✓ Client-компоненты: чисто (нет совпадений)");
+  if (!isClient && importsClient) {
+    violations.push(`❌ ${rel}: server-компонент импортирует @/lib/supabase/client`);
+  }
 }
 
-console.log("");
-process.exit(hasViolations ? 1 : 0);
+console.log("=== Supabase client/server boundary audit ===");
+console.log(`Scanned ${files.length} files`);
+
+if (violations.length === 0) {
+  console.log("✓ Supabase client boundaries are correct");
+  process.exit(0);
+}
+
+violations.forEach((v) => console.error(v));
+console.error(`\n${violations.length} violation(s) found`);
+process.exit(1);

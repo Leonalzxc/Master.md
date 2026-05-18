@@ -6,5 +6,16 @@
     "prettier": "^3.8.3",
     "prettier-plugin-tailwindcss": "^0.8.0",
     "tsx": "^4.22.2"
+  },
+  "scripts": {
+    "lint": "next lint",
+    "lint:fix": "next lint --fix",
+    "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css,md}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json,css,md}\"",
+    "typecheck": "tsc --noEmit",
+    "check:supabase": "node scripts/check-supabase-client.js",
+    "check:i18n": "node scripts/check-i18n-keys.js",
+    "check:all": "npm run typecheck && npm run lint && npm run format:check && npm run check:supabase && npm run check:i18n",
+    "prepare": "cd .. && husky web/.husky"
   }
 }
