@@ -66,19 +66,15 @@ export default function OnboardingWizard({ locale, userId }: { locale: string; u
       if (state.role === 'worker') {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const workerQ = supabase.from('profiles_worker') as any;
+        // IMPORTANT: do NOT include system fields (is_pro, verified, bid_credits,
+        // rating_avg, rating_count) — managed by DB triggers/admin, not here.
         const { error: workerErr } = await workerQ.upsert({
           id: userId,
           categories: state.categories,
           areas: state.areas,
           bio: state.bio.trim() || null,
           experience_yrs: state.experienceYrs ? parseInt(state.experienceYrs) : null,
-          is_pro: false,
-          verified: false,
-          bid_credits: 5,
-          rating_avg: 0,
-          rating_count: 0,
-          completed_at: new Date().toISOString(),
-        });
+        }, { onConflict: 'id', ignoreDuplicates: false });
         if (workerErr) throw workerErr;
 
         // Upload verification doc if provided

@@ -48,6 +48,8 @@ export default function NotificationBell() {
   // Load user + notifications
   useEffect(() => {
     const supabase = createClient();
+    // Store channel ref outside async function so cleanup can access it
+    let channelRef: ReturnType<typeof supabase.channel> | null = null;
 
     async function init() {
       const { data: { user } } = await supabase.auth.getUser();
@@ -64,7 +66,7 @@ export default function NotificationBell() {
       if (data) setItems(data as Notification[]);
 
       // Realtime: new notifications pushed by DB triggers
-      const channel = supabase
+      channelRef = supabase
         .channel(`notifs:${user.id}`)
         .on(
           'postgres_changes',
@@ -79,11 +81,11 @@ export default function NotificationBell() {
           },
         )
         .subscribe();
-
-      return () => { supabase.removeChannel(channel); };
     }
 
     init();
+    // Cleanup: unsubscribe realtime channel on unmount
+    return () => { if (channelRef) supabase.removeChannel(channelRef); };
   }, []);
 
   // Close on outside click

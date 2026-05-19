@@ -171,10 +171,7 @@ export default async function JobDetailPage({ params }: Props) {
                         style={{ display: 'block', width: 100, height: 100, borderRadius: 'var(--radius-sm)', overflow: 'hidden', border: '1.5px solid var(--glass-border)', flexShrink: 0 }}
                       >
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 200ms' }}
-                          onMouseEnter={(e) => { (e.target as HTMLImageElement).style.transform = 'scale(1.05)'; }}
-                          onMouseLeave={(e) => { (e.target as HTMLImageElement).style.transform = 'scale(1)'; }}
-                        />
+                        <img src={url} alt="" className="hover:scale-105 transition-transform duration-200" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       </a>
                     ))}
                   </div>
