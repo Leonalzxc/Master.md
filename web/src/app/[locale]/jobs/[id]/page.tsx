@@ -401,7 +401,6 @@ function BidCard({ bid, locale, isOwner, jobId }: { bid: BidRow; locale: string;
             <SelectWorkerButton
               jobId={jobId}
               bidId={bid.id}
-              workerId={bid.worker.id}
               workerName={bid.worker.name ?? 'Мастер'}
               locale={locale}
             />
