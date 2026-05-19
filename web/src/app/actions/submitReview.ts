@@ -35,17 +35,19 @@ export async function submitReview(
 
   // Insert review
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase.from('reviews') as any).insert({
+  const { error: reviewError } = await (supabase.from('reviews') as any).insert({
     job_id: jobId,
     author_id: user.id,
     worker_id: workerId,
     rating,
     text: text.trim() || null,
   });
+  if (reviewError) throw new Error(reviewError.message);
 
   // Mark job as done
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase.from('jobs') as any).update({ status: 'done' }).eq('id', jobId);
+  const { error: doneError } = await (supabase.from('jobs') as any).update({ status: 'done' }).eq('id', jobId);
+  if (doneError) throw new Error(doneError.message);
 
   // Recalculate worker rating
   const { data: allReviews } = await supabase

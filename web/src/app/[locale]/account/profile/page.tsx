@@ -36,7 +36,7 @@ export default async function ProfilePage({ params }: Props) {
 
   const initials = profile.name
     ? profile.name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()
-    : profile.phone.slice(-2);
+    : (profile.phone ?? '??').slice(-2);
 
   return (
     <>

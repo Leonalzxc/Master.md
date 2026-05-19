@@ -56,7 +56,8 @@ export default function Header() {
   }, []);
 
   const otherLocale = locale === 'ru' ? 'ro' : 'ru';
-  const switchLangPath = pathname.replace(`/${locale}`, `/${otherLocale}`);
+  // Use regex anchored to start to avoid replacing locale inside dynamic segments (e.g. /ru/workers/ru-uuid)
+  const switchLangPath = pathname.replace(new RegExp(`^\\/${locale}`), `/${otherLocale}`);
 
   const isWorker = profile?.role === 'worker';
   const dashboardHref = isWorker ? `/${locale}/account/worker` : `/${locale}/account/client`;

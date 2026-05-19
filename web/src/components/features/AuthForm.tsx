@@ -73,8 +73,10 @@ export default function AuthForm({ locale, next }: { locale: string; next?: stri
 
     if (profile?.name) {
       // Returning user — go to account
+      setLoading(false);
       setScreen('success');
-      setTimeout(() => { router.push(next ?? `/${locale}/account`); router.refresh(); }, 500);
+      const safeNext = next?.startsWith('/') ? next : `/${locale}/account`;
+      setTimeout(() => { router.push(safeNext); router.refresh(); }, 500);
     } else {
       // New user — start registration flow
       if (!profile) {
@@ -106,9 +108,11 @@ export default function AuthForm({ locale, next }: { locale: string; next?: stri
   /* ── finish client ──────────────────────────────────────── */
   async function finishClient() {
     setLoading(true);
+    setError('');
     const supabase = createClient();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase.from('profiles') as any).update({ name: name.trim(), role: 'client' }).eq('id', userId);
+    const { error: profileErr } = await (supabase.from('profiles') as any).update({ name: name.trim(), role: 'client' }).eq('id', userId);
+    if (profileErr) { setError(profileErr.message); setLoading(false); return; }
     setScreen('success');
     setTimeout(() => { router.push(`/${locale}/account/client`); router.refresh(); }, 500);
   }
@@ -124,20 +128,22 @@ export default function AuthForm({ locale, next }: { locale: string; next?: stri
   /* ── step 6 (worker): area + bio → finish ───────────────── */
   async function finishWorker() {
     setLoading(true);
+    setError('');
     const supabase = createClient();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase.from('profiles') as any).update({ name: name.trim(), role: 'worker', city: 'Бельцы' }).eq('id', userId);
+    const { error: profileErr } = await (supabase.from('profiles') as any).update({ name: name.trim(), role: 'worker', city: 'Бельцы' }).eq('id', userId);
+    if (profileErr) { setError(profileErr.message); setLoading(false); return; }
+    // IMPORTANT: do NOT include system fields (is_pro, verified, bid_credits,
+    // rating_avg, rating_count) — managed by DB triggers/admin, not here.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase.from('profiles_worker') as any).upsert({
+    const { error: workerErr } = await (supabase.from('profiles_worker') as any).upsert({
       id: userId,
       categories: cats,
       areas: areas.length > 0 ? areas : ['Весь город'],
       bio: bio.trim() || null,
       experience_yrs: expYrs ? parseInt(expYrs) : null,
-      is_pro: false, verified: false, bid_credits: 5,
-      rating_avg: 0, rating_count: 0,
-      completed_at: new Date().toISOString(),
-    });
+    }, { onConflict: 'id', ignoreDuplicates: false });
+    if (workerErr) { setError(workerErr.message); setLoading(false); return; }
     setScreen('success');
     setTimeout(() => { router.push(`/${locale}/account/worker`); router.refresh(); }, 500);
   }
