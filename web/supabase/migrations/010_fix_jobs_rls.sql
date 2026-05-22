@@ -14,7 +14,9 @@ SET search_path = public
 AS $$
   SELECT EXISTS (
     SELECT 1 FROM public.bids
-    WHERE job_id = p_job_id AND worker_id = p_worker_id
+    WHERE p_worker_id = auth.uid()
+      AND job_id = p_job_id
+      AND worker_id = p_worker_id
   );
 $$;
 
