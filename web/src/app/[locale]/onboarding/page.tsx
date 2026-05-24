@@ -31,7 +31,7 @@ export default async function OnboardingPage({ params }: Props) {
         className="flex-1 flex items-start justify-center"
         style={{ background: 'var(--bg-deep)', padding: '40px 16px 64px' }}
       >
-        <OnboardingWizard locale={locale} userId={user.id} />
+        <OnboardingWizard locale={locale} userId={user.id} userPhone={user.phone ?? user.email ?? user.id} />
       </main>
     </>
   );
