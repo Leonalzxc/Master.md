@@ -5,6 +5,7 @@ import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import AuthForm from '@/components/features/AuthForm';
 import { createClient } from '@/lib/supabase/server';
+import { safeLocalPath } from '@/lib/navigation';
 
 type Props = {
   params: Promise<{ locale: string }>;
@@ -23,8 +24,8 @@ export default async function AuthPage({ params, searchParams }: Props) {
   // Already logged in → redirect
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  // Validate next to prevent open redirect (must be relative path)
-  const safeNext = next?.startsWith('/') ? next : `/${locale}/account`;
+  // Validate next to prevent open redirects.
+  const safeNext = safeLocalPath(next, `/${locale}/account`);
   if (user) redirect(safeNext);
 
   return (

@@ -25,7 +25,15 @@ interface State {
   docFile: File | null;
 }
 
-export default function OnboardingWizard({ locale, userId }: { locale: string; userId: string }) {
+export default function OnboardingWizard({
+  locale,
+  userId,
+  userPhone,
+}: {
+  locale: string;
+  userId: string;
+  userPhone: string;
+}) {
   const [step, setStep] = useState<Step>(1);
   const [state, setState] = useState<State>({
     name: '', role: null, categories: [], city: 'Бельцы', areas: [], bio: '', experienceYrs: '', docFile: null,
@@ -55,11 +63,13 @@ export default function OnboardingWizard({ locale, userId }: { locale: string; u
       // Update profile
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const profileQ = supabase.from('profiles') as any;
-      const { error: profileErr } = await profileQ.update({
+      const { error: profileErr } = await profileQ.upsert({
+        id: userId,
+        phone: userPhone,
         name: state.name.trim(),
         role: state.role!,
         city: state.city || null,
-      }).eq('id', userId);
+      }, { onConflict: 'id', ignoreDuplicates: false });
       if (profileErr) throw profileErr;
 
       // If worker — create profiles_worker entry

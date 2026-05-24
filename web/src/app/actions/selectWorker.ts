@@ -14,21 +14,41 @@ export async function selectWorker(jobId: string, bidId: string, workerId: strin
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const job = rawJob as any;
   if (!job || job.client_id !== user.id) throw new Error('Not authorized');
+  if (job.status !== 'active') throw new Error('Invalid job status');
+
+  const { data: rawBid } = await supabase
+    .from('bids')
+    .select('id, job_id, worker_id, status')
+    .eq('id', bidId)
+    .eq('job_id', jobId)
+    .single();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const bid = rawBid as any;
+  if (!bid || bid.worker_id !== workerId || bid.status !== 'sent') {
+    throw new Error('Invalid bid');
+  }
 
   // Select this bid, reject all others for the same job
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error: e1 } = await (supabase.from('bids') as any).update({ status: 'selected' }).eq('id', bidId);
+  const { error: e1, count: selectedCount } = await (supabase.from('bids') as any)
+    .update({ status: 'selected' }, { count: 'exact' })
+    .eq('id', bidId)
+    .eq('job_id', jobId)
+    .eq('worker_id', workerId)
+    .eq('status', 'sent');
   if (e1) throw new Error(e1.message);
+  if (selectedCount !== 1) throw new Error('Invalid bid');
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error: e2 } = await (supabase.from('bids') as any).update({ status: 'rejected' }).eq('job_id', jobId).neq('id', bidId);
   if (e2) throw new Error(e2.message);
   // Update job status
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error: e3 } = await (supabase.from('jobs') as any).update({
+  const { error: e3, count: jobCount } = await (supabase.from('jobs') as any).update({
     status: 'in_progress',
     selected_worker_id: workerId,
-  }).eq('id', jobId);
+  }, { count: 'exact' }).eq('id', jobId).eq('status', 'active');
   if (e3) throw new Error(e3.message);
+  if (jobCount !== 1) throw new Error('Invalid job status');
 
   revalidatePath(`/${locale}/jobs/${jobId}`);
   revalidatePath(`/${locale}/account/client`);
