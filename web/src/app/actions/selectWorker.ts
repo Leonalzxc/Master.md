@@ -10,32 +10,36 @@ export async function selectWorker(jobId: string, bidId: string, workerId: strin
   if (!user) throw new Error('Not authenticated');
 
   // Verify the current user owns this job
-  const { data: job } = await supabase
+  const { data: rawJob } = await supabase
     .from('jobs')
     .select('client_id, status')
     .eq('id', jobId)
     .single();
+  const job = rawJob as { client_id: string; status: string } | null;
   if (!job || job.client_id !== user.id) throw new Error('Not authorized');
   if (job.status !== 'active') throw new Error('cannot_select_worker');
 
-  const { data: bid } = await supabase
+  const { data: rawBid } = await supabase
     .from('bids')
     .select('job_id, worker_id, status')
     .eq('id', bidId)
     .single();
+  const bid = rawBid as { job_id: string; worker_id: string; status: string } | null;
   if (!bid || bid.job_id !== jobId || bid.worker_id !== workerId || bid.status !== 'sent') {
     throw new Error('invalid_bid');
   }
 
   // Claim the active job first so concurrent selections cannot select multiple workers.
-  const { error: e1 } = await supabase.from('jobs').update({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error: e1 } = await (supabase.from('jobs') as any).update({
     status: 'in_progress',
     selected_worker_id: workerId,
   }).eq('id', jobId).eq('client_id', user.id).eq('status', 'active').select('id').single();
   if (e1) throw new Error(e1.message);
 
   // Select this bid, reject all other pending bids for the same job
-  const { error: e2 } = await supabase.from('bids').update({ status: 'selected' })
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error: e2 } = await (supabase.from('bids') as any).update({ status: 'selected' })
     .eq('id', bidId)
     .eq('job_id', jobId)
     .eq('worker_id', workerId)
@@ -43,7 +47,8 @@ export async function selectWorker(jobId: string, bidId: string, workerId: strin
     .select('id')
     .single();
   if (e2) throw new Error(e2.message);
-  const { error: e3 } = await supabase.from('bids').update({ status: 'rejected' })
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error: e3 } = await (supabase.from('bids') as any).update({ status: 'rejected' })
     .eq('job_id', jobId)
     .neq('id', bidId)
     .eq('status', 'sent');
