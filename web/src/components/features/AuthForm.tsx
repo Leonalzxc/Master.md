@@ -4,6 +4,7 @@ import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { CATEGORY_LABELS_RU, CATEGORY_ICONS, type Category } from '@/lib/mock/data';
+import { safeInternalPath } from '@/lib/utils/safe-redirect';
 
 type Screen = 'phone' | 'otp' | 'name' | 'role' | 'worker-cats' | 'worker-area' | 'success';
 type Role = 'client' | 'worker';
@@ -75,7 +76,7 @@ export default function AuthForm({ locale, next }: { locale: string; next?: stri
       // Returning user — go to account
       setLoading(false);
       setScreen('success');
-      const safeNext = next?.startsWith('/') ? next : `/${locale}/account`;
+      const safeNext = safeInternalPath(next, `/${locale}/account`);
       setTimeout(() => { router.push(safeNext); router.refresh(); }, 500);
     } else {
       // New user — start registration flow
