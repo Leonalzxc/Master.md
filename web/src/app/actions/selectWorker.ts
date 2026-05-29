@@ -9,7 +9,8 @@ export async function selectWorker(jobId: string, bidId: string, locale: string)
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
 
-  const { data: selectedWorkerId, error } = await supabase.rpc('select_worker_for_job', {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: selectedWorkerId, error } = await (supabase as any).rpc('select_worker_for_job', {
     p_job_id: jobId,
     p_bid_id: bidId,
   });
