@@ -11,6 +11,11 @@ type Props = {
   searchParams: Promise<{ next?: string }>;
 };
 
+function safeRelativePath(next: string | undefined, fallback: string) {
+  if (!next || !next.startsWith('/') || next.startsWith('//')) return fallback;
+  return next;
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
   return { title: locale === 'ru' ? 'Вход' : 'Autentificare' };
@@ -24,7 +29,7 @@ export default async function AuthPage({ params, searchParams }: Props) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   // Validate next to prevent open redirect (must be relative path)
-  const safeNext = next?.startsWith('/') ? next : `/${locale}/account`;
+  const safeNext = safeRelativePath(next, `/${locale}/account`);
   if (user) redirect(safeNext);
 
   return (
@@ -49,7 +54,7 @@ export default async function AuthPage({ params, searchParams }: Props) {
               </p>
             </div>
 
-            <AuthForm locale={locale} next={next} />
+            <AuthForm locale={locale} next={safeNext} />
 
             <p className="text-xs text-center" style={{ color: 'var(--text-muted)', lineHeight: 1.6 }}>
               {locale === 'ru'

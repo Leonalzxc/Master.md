@@ -16,12 +16,16 @@ export async function cancelJob(jobId: string, locale: string) {
   if (job.status !== 'active') throw new Error('cannot_cancel');
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase.from('jobs') as any)
+  const { data: updatedJob, error } = await (supabase.from('jobs') as any)
     .update({ status: 'cancelled' })
     .eq('id', jobId)
-    .eq('client_id', user.id); // TOCTOU guard: double-check ownership in UPDATE
+    .eq('client_id', user.id) // TOCTOU guard: double-check ownership in UPDATE
+    .eq('status', 'active')
+    .select('id')
+    .maybeSingle();
 
   if (error) throw new Error(error.message);
+  if (!updatedJob) throw new Error('cannot_cancel');
 
   revalidatePath(`/${locale}/account/client`);
   revalidatePath(`/${locale}/jobs`);
