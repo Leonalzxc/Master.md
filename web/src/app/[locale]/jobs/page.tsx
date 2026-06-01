@@ -8,7 +8,7 @@ import { CITIES, CATEGORY_LABELS_RU, CATEGORY_ICONS, type Category } from '@/lib
 import Badge from '@/components/ui/Badge';
 import type { Job } from '@/lib/supabase/types';
 
-type JobWithBids = Job & { bid_count: { count: number }[] };
+type JobWithBids = Job & { bid_count?: { count: number }[] };
 
 const PAGE_SIZE = 20;
 
@@ -33,7 +33,7 @@ export default async function JobsPage({ params, searchParams }: Props) {
 
   let query = supabase
     .from('jobs')
-    .select('*, bid_count:bids(count)')
+    .select('*')
     .eq('status', 'active');
 
   if (city) query = query.eq('city', city);

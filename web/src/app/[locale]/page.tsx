@@ -83,69 +83,151 @@ function HeroSection({ locale }: { locale: string }) {
       </div>
 
       <div className="container relative">
-        <div style={{ maxWidth: 660 }}>
-          {/* Badge */}
-          <div
-            className="inline-flex items-center gap-2 mb-5 fade-in"
-            style={{
-              background: 'rgba(14,165,233,.15)',
-              border: '1px solid rgba(14,165,233,.3)',
-              borderRadius: 100,
-              padding: '6px 14px',
-              fontSize: 13,
-              color: '#7dd3fc',
-              fontWeight: 600,
-            }}
-          >
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#38bdf8', display: 'inline-block' }} />
-            {locale === 'ru' ? 'Бельцы, Молдова' : 'Bălți, Moldova'}
-          </div>
-
-          <h1
-            className="font-bold mb-5 text-white fade-in stagger-1"
-            style={{
-              fontFamily: 'var(--font-display)',
-              fontSize: 'clamp(2.1rem, 5.5vw, 3.5rem)',
-              lineHeight: 1.12,
-              letterSpacing: '-.02em',
-            }}
-          >
-            {t('heroTitle')}{' '}
-            <span
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 40, alignItems: 'center' }}>
+          {/* Left: text */}
+          <div style={{ maxWidth: 580 }}>
+            {/* Badge */}
+            <div
+              className="inline-flex items-center gap-2 mb-5 fade-in"
               style={{
-                background: 'linear-gradient(90deg, #38bdf8, #0ea5e9)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text',
+                background: 'rgba(14,165,233,.15)',
+                border: '1px solid rgba(14,165,233,.3)',
+                borderRadius: 100,
+                padding: '6px 14px',
+                fontSize: 13,
+                color: '#7dd3fc',
+                fontWeight: 600,
               }}
             >
-              {t('heroHighlight')}
-            </span>
-          </h1>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#38bdf8', display: 'inline-block' }} />
+              {locale === 'ru' ? 'Бельцы, Молдова' : 'Bălți, Moldova'}
+            </div>
 
-          <p
-            className="mb-8 fade-in stagger-2"
-            style={{
-              color: 'rgba(255,255,255,.65)',
-              fontSize: 'clamp(16px, 2vw, 18px)',
-              lineHeight: 1.7,
-              maxWidth: 520,
-            }}
-          >
-            {t('heroSubtitle')}
-          </p>
-
-          <div className="flex flex-col sm:flex-row gap-3 fade-in stagger-3">
-            <Link
-              href={`/${locale}/request/new`}
-              className="btn-primary"
-              style={{ fontSize: 16, height: 52, padding: '0 28px' }}
+            <h1
+              className="font-bold mb-5 text-white fade-in stagger-1"
+              style={{
+                fontFamily: 'var(--font-display)',
+                fontSize: 'clamp(2.1rem, 5.5vw, 3.5rem)',
+                lineHeight: 1.12,
+                letterSpacing: '-.02em',
+              }}
             >
-              {t('ctaClient')}
-            </Link>
-            <Link href={`/${locale}/jobs`} className="hero-btn-outline">
-              {locale === 'ru' ? 'Найти заказ →' : 'Găsește cerere →'}
-            </Link>
+              {t('heroTitle')}{' '}
+              <span
+                style={{
+                  background: 'linear-gradient(90deg, #38bdf8, #0ea5e9)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text',
+                }}
+              >
+                {t('heroHighlight')}
+              </span>
+            </h1>
+
+            <p
+              className="mb-8 fade-in stagger-2"
+              style={{
+                color: 'rgba(255,255,255,.65)',
+                fontSize: 'clamp(16px, 2vw, 18px)',
+                lineHeight: 1.7,
+                maxWidth: 480,
+              }}
+            >
+              {t('heroSubtitle')}
+            </p>
+
+            <div className="flex flex-col sm:flex-row gap-3 fade-in stagger-3">
+              <Link
+                href={`/${locale}/request/new`}
+                className="btn-primary"
+                style={{ fontSize: 16, height: 52, padding: '0 28px' }}
+              >
+                {t('ctaClient')}
+              </Link>
+              <Link href={`/${locale}/jobs`} className="hero-btn-outline">
+                {locale === 'ru' ? 'Найти заказ →' : 'Găsește cerere →'}
+              </Link>
+            </div>
+          </div>
+
+          {/* Right: floating UI mock — visible on md+ */}
+          <div
+            className="hidden md:flex"
+            style={{ flexDirection: 'column', gap: 12, width: 280, flexShrink: 0 }}
+          >
+            {/* Worker card */}
+            <div style={{
+              background: 'rgba(255,255,255,.07)',
+              border: '1px solid rgba(255,255,255,.12)',
+              borderRadius: 16,
+              padding: '14px 16px',
+              backdropFilter: 'blur(12px)',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                <div style={{
+                  width: 38, height: 38, borderRadius: '50%',
+                  background: 'linear-gradient(135deg,#38bdf8,#0ea5e9)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 16, fontWeight: 700, color: '#fff', flexShrink: 0,
+                }}>А</div>
+                <div>
+                  <div style={{ color: '#fff', fontWeight: 600, fontSize: 13 }}>
+                    {locale === 'ru' ? 'Андрей М.' : 'Andrei M.'}
+                  </div>
+                  <div style={{ color: 'rgba(255,255,255,.5)', fontSize: 11 }}>
+                    {locale === 'ru' ? 'Электрика' : 'Electrică'}
+                  </div>
+                </div>
+                <div style={{ marginLeft: 'auto', color: '#fbbf24', fontSize: 12, fontWeight: 600 }}>★ 4.9</div>
+              </div>
+              <div style={{
+                background: 'rgba(14,165,233,.15)', borderRadius: 8,
+                padding: '6px 10px', fontSize: 12, color: '#7dd3fc',
+              }}>
+                {locale === 'ru' ? '✓ 47 выполненных заказов' : '✓ 47 comenzi finalizate'}
+              </div>
+            </div>
+
+            {/* Job card */}
+            <div style={{
+              background: 'rgba(255,255,255,.07)',
+              border: '1px solid rgba(255,255,255,.12)',
+              borderRadius: 16,
+              padding: '14px 16px',
+              backdropFilter: 'blur(12px)',
+            }}>
+              <div style={{ color: 'rgba(255,255,255,.5)', fontSize: 11, marginBottom: 4 }}>
+                {locale === 'ru' ? 'Новая заявка' : 'Cerere nouă'}
+              </div>
+              <div style={{ color: '#fff', fontWeight: 600, fontSize: 13, marginBottom: 6 }}>
+                {locale === 'ru' ? 'Заменить проводку в квартире' : 'Înlocuire instalație electrică'}
+              </div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <span style={{
+                  background: 'rgba(251,191,36,.15)', color: '#fbbf24',
+                  borderRadius: 6, padding: '3px 8px', fontSize: 11, fontWeight: 500,
+                }}>⚡ {locale === 'ru' ? 'Срочно' : 'Urgent'}</span>
+                <span style={{
+                  background: 'rgba(255,255,255,.08)', color: 'rgba(255,255,255,.6)',
+                  borderRadius: 6, padding: '3px 8px', fontSize: 11,
+                }}>3 000–6 000 MDL</span>
+              </div>
+            </div>
+
+            {/* Mini stat */}
+            <div style={{
+              background: 'rgba(14,165,233,.12)',
+              border: '1px solid rgba(14,165,233,.2)',
+              borderRadius: 12,
+              padding: '10px 14px',
+              display: 'flex', alignItems: 'center', gap: 8,
+            }}>
+              <span style={{ fontSize: 18 }}>⚡</span>
+              <span style={{ color: '#7dd3fc', fontSize: 12, fontWeight: 500 }}>
+                {locale === 'ru' ? 'Первый отклик за 15 минут' : 'Primul răspuns în 15 minute'}
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -231,37 +313,50 @@ function HowItWorksSection() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3" style={{ gap: 0, position: 'relative' }}>
           {steps.map((step, i) => (
-            <div
-              key={i}
-              className="card p-7 flex flex-col gap-4 slide-up"
-              style={{ animationDelay: `${i * 80}ms` }}
-            >
-              <div className="flex items-center gap-3">
-                <div
-                  className="flex items-center justify-center rounded-2xl text-2xl shrink-0"
-                  style={{
-                    width: 52, height: 52,
-                    background: 'linear-gradient(135deg, var(--accent-dim), rgba(14,165,233,.06))',
-                  }}
-                >
-                  {step.icon}
+            <div key={i} style={{ position: 'relative', padding: '0 12px' }}>
+              {/* Arrow connector (not after last) */}
+              {i < steps.length - 1 && (
+                <div className="hidden md:block" style={{
+                  position: 'absolute', right: -8, top: '38px',
+                  zIndex: 1, color: 'var(--accent)', fontSize: 20, opacity: 0.4,
+                }}>→</div>
+              )}
+              <div
+                className="card p-7 flex flex-col gap-4 slide-up h-full"
+                style={{ animationDelay: `${i * 80}ms` }}
+              >
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                  <div
+                    className="flex items-center justify-center rounded-2xl text-2xl shrink-0"
+                    style={{
+                      width: 56, height: 56,
+                      background: 'linear-gradient(135deg, #0ea5e920, #0ea5e908)',
+                      border: '1px solid #0ea5e920',
+                    }}
+                  >
+                    {step.icon}
+                  </div>
+                  <div
+                    className="font-bold"
+                    style={{
+                      color: 'var(--accent)', fontSize: 28,
+                      fontFamily: 'var(--font-display)',
+                      lineHeight: 1, opacity: 0.3,
+                    }}
+                  >
+                    {step.num}
+                  </div>
                 </div>
-                <span
-                  className="font-bold text-sm"
-                  style={{ color: 'var(--accent)', letterSpacing: '.12em', fontFamily: 'var(--font-display)' }}
-                >
-                  {step.num}
-                </span>
-              </div>
-              <div>
-                <h3 className="font-semibold mb-1.5" style={{ fontSize: 17, color: 'var(--text)' }}>
-                  {step.title}
-                </h3>
-                <p style={{ color: 'var(--text-secondary)', fontSize: 14.5, lineHeight: 1.65 }}>
-                  {step.desc}
-                </p>
+                <div>
+                  <h3 className="font-semibold mb-1.5" style={{ fontSize: 17, color: 'var(--text)' }}>
+                    {step.title}
+                  </h3>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: 14.5, lineHeight: 1.65 }}>
+                    {step.desc}
+                  </p>
+                </div>
               </div>
             </div>
           ))}
@@ -299,15 +394,19 @@ function CategoriesSection({ locale }: { locale: string }) {
               key={slug}
               href={`/${locale}/request/new?category=${slug}`}
               className="category-card card flex flex-col items-center gap-3 p-5 text-center slide-up"
-              style={{ textDecoration: 'none', animationDelay: `${i * 40}ms` }}
+              style={{
+                textDecoration: 'none',
+                animationDelay: `${i * 40}ms`,
+                borderTop: `3px solid ${color}`,
+              }}
             >
               <div
                 style={{
-                  width: 52, height: 52,
+                  width: 56, height: 56,
                   borderRadius: 16,
-                  background: `${color}18`,
+                  background: `${color}22`,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 26,
+                  fontSize: 28,
                   transition: 'transform 200ms var(--ease-spring)',
                 }}
               >
