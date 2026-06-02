@@ -95,7 +95,16 @@ export interface Database {
       };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      select_worker_for_job: {
+        Args: { p_job_id: string; p_bid_id: string };
+        Returns: string;
+      };
+      worker_has_bid_on_job: {
+        Args: { p_job_id: string; p_worker_id: string };
+        Returns: boolean;
+      };
+    };
   };
 }
 
