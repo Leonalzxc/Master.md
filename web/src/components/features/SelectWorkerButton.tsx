@@ -7,12 +7,11 @@ import { selectWorker } from '@/app/actions/selectWorker';
 interface Props {
   jobId: string;
   bidId: string;
-  workerId: string;
   workerName: string;
   locale: string;
 }
 
-export default function SelectWorkerButton({ jobId, bidId, workerId, workerName, locale }: Props) {
+export default function SelectWorkerButton({ jobId, bidId, workerName, locale }: Props) {
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
   const router = useRouter();
@@ -25,7 +24,7 @@ export default function SelectWorkerButton({ jobId, bidId, workerId, workerName,
 
     setLoading(true);
     try {
-      await selectWorker(jobId, bidId, workerId, locale);
+      await selectWorker(jobId, bidId, locale);
       setDone(true);
       router.refresh();
     } catch {
