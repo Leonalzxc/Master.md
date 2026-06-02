@@ -4,12 +4,18 @@ import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { sendTelegramMessage } from '@/lib/telegram';
 
+type SelectWorkerForJobRpc = (
+  fn: 'select_worker_for_job',
+  args: { p_job_id: string; p_bid_id: string }
+) => Promise<{ data: string | null; error: { message: string } | null }>;
+
 export async function selectWorker(jobId: string, bidId: string, locale: string) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
 
-  const { data: workerId, error } = await supabase.rpc('select_worker_for_job', {
+  const selectWorkerForJob = supabase.rpc as unknown as SelectWorkerForJobRpc;
+  const { data: workerId, error } = await selectWorkerForJob('select_worker_for_job', {
     p_job_id: jobId,
     p_bid_id: bidId,
   });
