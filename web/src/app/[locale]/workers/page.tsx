@@ -24,15 +24,19 @@ export default async function WorkersPage({ params, searchParams }: Props) {
 
   const supabase = await createClient();
 
-  const { data: rawWorkers, error } = await supabase
+  let query = supabase
     .from('profiles')
     .select('*, profiles_worker(*)')
     .eq('role', 'worker')
     .order('name');
+  // Apply city filter at DB level for efficiency
+  if (city) query = (query as typeof query).eq('city', city);
+
+  const { data: rawWorkers, error } = await query;
 
   const workers = ((rawWorkers ?? []) as WorkerRow[])
     .filter((w) => w.profiles_worker !== null)
-    .filter((w) => !city || w.city === city)
+    // Category filter stays in-memory (array column, harder to push to Supabase JS client)
     .filter((w) => !category || (w.profiles_worker!.categories as string[]).includes(category))
     .sort((a, b) => {
       const aPro = a.profiles_worker!.is_pro;

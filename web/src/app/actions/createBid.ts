@@ -21,6 +21,11 @@ export async function createBid(input: {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   if ((rawProfile as any)?.role !== 'worker') throw new Error('not_worker');
 
+  // Atomically deduct 1 bid credit (DB-level lock prevents race conditions)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: credited } = await (supabase as any).rpc('spend_bid_credit', { p_worker_id: user.id });
+  if (!credited) throw new Error('no_credits');
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (supabase.from('bids') as any).insert({
     job_id: input.jobId,

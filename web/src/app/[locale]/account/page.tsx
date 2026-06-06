@@ -34,7 +34,7 @@ export default async function AccountPage({ params }: Props) {
   const profile = rawProfile as Profile | null;
 
   if (!profile) redirect(`/${locale}/auth`);
-  if (!profile.name) redirect(`/${locale}/account/profile`);
+  if (!profile.name) redirect(`/${locale}/onboarding`);
 
   const isWorker = profile.role === 'worker';
   const t = (ru: string, ro: string) => locale === 'ru' ? ru : ro;

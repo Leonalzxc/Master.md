@@ -18,7 +18,8 @@ export async function cancelJob(jobId: string, locale: string) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (supabase.from('jobs') as any)
     .update({ status: 'cancelled' })
-    .eq('id', jobId);
+    .eq('id', jobId)
+    .eq('client_id', user.id); // TOCTOU guard: double-check ownership in UPDATE
 
   if (error) throw new Error(error.message);
 

@@ -25,17 +25,26 @@ export default async function WorkerDashboard({ params }: Props) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect(`/${locale}/auth`);
 
-  const [{ data: rawBids }, { data: rawWorker }] = await Promise.all([
+  const [{ data: rawBids }, { data: rawWorker }, { data: rawReviews }] = await Promise.all([
     supabase
       .from('bids')
       .select('*, job:jobs(id, description, category, city, area, status, budget_min, budget_max, created_at)')
       .eq('worker_id', user.id)
       .order('created_at', { ascending: false }),
     supabase.from('profiles_worker').select('*').eq('id', user.id).single(),
+    supabase
+      .from('reviews')
+      .select('*, author:profiles!reviews_author_id_fkey(name)')
+      .eq('worker_id', user.id)
+      .order('created_at', { ascending: false }),
   ]);
 
   const bids = (rawBids ?? []) as unknown as BidRow[];
   const worker = rawWorker as ProfileWorker | null;
+  const reviews = (rawReviews ?? []) as unknown as Array<{
+    id: string; rating: number; text: string | null; created_at: string;
+    author: { name: string | null } | null;
+  }>;
 
   const pendingBids    = bids.filter((b) => b.status === 'sent');
   const activeBids     = bids.filter((b) => b.status === 'selected' && b.job?.status === 'in_progress');
@@ -109,23 +118,55 @@ export default async function WorkerDashboard({ params }: Props) {
             </div>
           )}
 
-          {/* Stats strip (shown once there's history) */}
-          {(completedBids.length > 0 || activeBids.length > 0) && (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {[
-                { icon: '✅', label: locale === 'ru' ? 'Завершено' : 'Finalizate', value: completedBids.length },
-                { icon: '🔨', label: locale === 'ru' ? 'В работе' : 'În lucru', value: activeBids.length },
-                { icon: '⏳', label: locale === 'ru' ? 'Ожидают' : 'Așteptate', value: pendingBids.length },
-                { icon: '⭐', label: locale === 'ru' ? 'Рейтинг' : 'Rating', value: worker?.rating_avg ? `${worker.rating_avg.toFixed(1)}/5` : '—' },
-              ].map(({ icon, label, value }) => (
-                <div key={label} className="card p-4 text-center">
-                  <div className="text-2xl mb-1">{icon}</div>
-                  <div className="font-bold text-xl" style={{ color: 'var(--text)' }}>{value}</div>
-                  <div className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{label}</div>
-                </div>
-              ))}
+          {/* Stats strip */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {[
+              { icon: '✅', label: locale === 'ru' ? 'Завершено' : 'Finalizate', value: completedBids.length },
+              { icon: '🔨', label: locale === 'ru' ? 'В работе' : 'În lucru', value: activeBids.length },
+              { icon: '⏳', label: locale === 'ru' ? 'Ожидают' : 'Așteptate', value: pendingBids.length },
+              { icon: '⭐', label: locale === 'ru' ? 'Рейтинг' : 'Rating', value: worker?.rating_avg ? `${worker.rating_avg.toFixed(1)}/5` : '—' },
+            ].map(({ icon, label, value }) => (
+              <div key={label} className="card p-4 text-center">
+                <div className="text-2xl mb-1">{icon}</div>
+                <div className="font-bold text-xl" style={{ color: 'var(--text)' }}>{value}</div>
+                <div className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{label}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Bid credits card */}
+          <div className="card p-5 flex items-center justify-between gap-4 flex-wrap">
+            <div className="flex items-center gap-3">
+              <span style={{ fontSize: 28 }}>💳</span>
+              <div>
+                <p className="font-semibold text-sm" style={{ color: 'var(--text)' }}>
+                  {locale === 'ru' ? 'Кредиты для откликов' : 'Credite pentru oferte'}
+                </p>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                  {locale === 'ru' ? '1 кредит = 1 отклик на заявку' : '1 credit = 1 ofertă pe cerere'}
+                </p>
+              </div>
             </div>
-          )}
+            <div className="flex items-center gap-4">
+              <div className="text-center">
+                <div
+                  className="font-bold text-2xl"
+                  style={{ color: (worker?.bid_credits ?? 0) > 0 ? 'var(--accent)' : 'var(--danger)' }}
+                >
+                  {worker?.bid_credits ?? 0}
+                </div>
+                <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                  {locale === 'ru' ? 'кредитов' : 'credite'}
+                </div>
+              </div>
+              {(worker?.bid_credits ?? 0) === 0 && (
+                <span className="text-xs px-3 py-1.5 rounded-full font-semibold"
+                  style={{ background: 'rgba(239,68,68,.1)', color: 'var(--danger)' }}>
+                  {locale === 'ru' ? 'Нет кредитов' : 'Fără credite'}
+                </span>
+              )}
+            </div>
+          </div>
 
           {/* Active jobs (in_progress) */}
           {activeBids.length > 0 && (
@@ -190,6 +231,37 @@ export default async function WorkerDashboard({ params }: Props) {
                   ))}
                 </div>
               </details>
+            </section>
+          )}
+
+          {/* My reviews */}
+          {reviews.length > 0 && (
+            <section>
+              <h2 className="font-semibold text-base mb-3" style={{ color: 'var(--text)' }}>
+                ⭐ {locale === 'ru' ? 'Мои отзывы' : 'Recenziile mele'} ({reviews.length})
+              </h2>
+              <div className="flex flex-col gap-3">
+                {reviews.map((r) => (
+                  <div key={r.id} className="card p-4 flex flex-col gap-2">
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium text-sm" style={{ color: 'var(--text)' }}>
+                        {r.author?.name ?? (locale === 'ru' ? 'Клиент' : 'Client')}
+                      </span>
+                      <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                        {new Date(r.created_at).toLocaleDateString(locale === 'ru' ? 'ru-RU' : 'ro-RO', { day: 'numeric', month: 'long', year: 'numeric' })}
+                      </span>
+                    </div>
+                    <div className="flex gap-0.5">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <span key={i} style={{ color: i < r.rating ? '#f59e0b' : 'var(--glass-border)', fontSize: 16 }}>★</span>
+                      ))}
+                    </div>
+                    {r.text && (
+                      <p className="text-sm" style={{ color: 'var(--text-secondary)', lineHeight: 1.6 }}>{r.text}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
             </section>
           )}
 

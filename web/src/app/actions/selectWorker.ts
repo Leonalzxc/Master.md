@@ -17,15 +17,18 @@ export async function selectWorker(jobId: string, bidId: string, workerId: strin
 
   // Select this bid, reject all others for the same job
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase.from('bids') as any).update({ status: 'selected' }).eq('id', bidId);
+  const { error: e1 } = await (supabase.from('bids') as any).update({ status: 'selected' }).eq('id', bidId);
+  if (e1) throw new Error(e1.message);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase.from('bids') as any).update({ status: 'rejected' }).eq('job_id', jobId).neq('id', bidId);
+  const { error: e2 } = await (supabase.from('bids') as any).update({ status: 'rejected' }).eq('job_id', jobId).neq('id', bidId);
+  if (e2) throw new Error(e2.message);
   // Update job status
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase.from('jobs') as any).update({
+  const { error: e3 } = await (supabase.from('jobs') as any).update({
     status: 'in_progress',
     selected_worker_id: workerId,
   }).eq('id', jobId);
+  if (e3) throw new Error(e3.message);
 
   revalidatePath(`/${locale}/jobs/${jobId}`);
   revalidatePath(`/${locale}/account/client`);
