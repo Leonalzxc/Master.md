@@ -80,19 +80,20 @@ CREATE TRIGGER trg_notify_workers_new_job
 
 -- 3. Schedule auto-expire via pg_cron (if extension available)
 -- Runs every hour — safe to apply even if pg_cron is not enabled yet
-DO $$
+DO $do$
 BEGIN
   IF EXISTS (
     SELECT 1 FROM pg_extension WHERE extname = 'pg_cron'
   ) THEN
     PERFORM cron.schedule(
       'expire-overdue-jobs',
-      '0 * * * *',  -- every hour at :00
-      $$SELECT public.expire_overdue_jobs()$$
+      '0 * * * *',
+      'SELECT public.expire_overdue_jobs()'
     );
   END IF;
 EXCEPTION WHEN OTHERS THEN
   -- pg_cron not available, skip silently
   NULL;
 END;
+$do$;
 $$;
