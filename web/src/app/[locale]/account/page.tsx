@@ -120,10 +120,14 @@ export default async function AccountPage({ params }: Props) {
           {/* Quick links */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[
-              { href: `/${locale}/request/new`,  icon: '➕', label: t('Новая заявка', 'Cerere nouă') },
-              { href: `/${locale}/jobs`,          icon: '📌', label: t('Все заявки', 'Toate cererile') },
-              { href: `/${locale}/workers`,       icon: '👷', label: t('Мастера', 'Meșteri') },
-              { href: `/${locale}/account/profile`, icon: '👤', label: t('Профиль', 'Profil') },
+              { href: `/${locale}/request/new`,     icon: '➕', label: t('Новая заявка', 'Cerere nouă') },
+              { href: `/${locale}/jobs`,             icon: '📌', label: t('Все заявки', 'Toate cererile') },
+              ...(isWorker ? [
+                { href: `/${locale}/credits`,        icon: '💳', label: t('Кредиты', 'Credite') },
+              ] : [
+                { href: `/${locale}/workers`,        icon: '👷', label: t('Мастера', 'Meșteri') },
+              ]),
+              { href: `/${locale}/account/profile`,  icon: '👤', label: t('Профиль', 'Profil') },
             ].map(({ href, icon, label }) => (
               <Link
                 key={href}

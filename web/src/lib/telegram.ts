@@ -59,7 +59,6 @@ export async function sendTelegramMessage({ chatId, text, parseMode = 'HTML', di
  * When user taps it, the bot receives `/start {userId}` and we store their chat_id.
  */
 export function telegramConnectUrl(userId: string): string {
-  const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME;
-  if (!botUsername) return '';
+  const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME ?? 'Master_MDbot';
   return `https://t.me/${botUsername}?start=${userId}`;
 }

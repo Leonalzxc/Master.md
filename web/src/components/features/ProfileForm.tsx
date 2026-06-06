@@ -291,7 +291,7 @@ export default function ProfileForm({ locale, profile, workerProfile, telegramCo
             </span>
           ) : (
             <a
-              href={`https://t.me/${process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME ?? 'mastermdbot'}?start=${userId}`}
+              href={`https://t.me/${process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME ?? 'Master_MDbot'}?start=${userId}`}
               target="_blank"
               rel="noopener noreferrer"
               className="btn-secondary shrink-0"

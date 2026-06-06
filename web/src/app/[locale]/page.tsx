@@ -4,6 +4,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
+import { createClient } from '@/lib/supabase/server';
 
 export async function generateMetadata({
   params,
@@ -29,22 +30,33 @@ const CATEGORIES = [
   { slug: 'painting',     icon: '🖌️', color: '#c4b5fd' },
 ] as const;
 
-const STATS = [
-  { value: '500+', labelRu: 'мастеров', labelRo: 'meșteri' },
-  { value: '15 мин', labelRu: 'до первого отклика', labelRo: 'primul răspuns' },
-  { value: '4.9★', labelRu: 'средний рейтинг', labelRo: 'rating mediu' },
-];
 
 type Props = { params: Promise<{ locale: string }> };
 
 export default async function HomePage({ params }: Props) {
   const { locale } = await params;
+
+  // Fetch real stats for the stats bar
+  let workerCount = 0;
+  let activeJobCount = 0;
+  try {
+    const supabase = await createClient();
+    const [{ count: wc }, { count: jc }] = await Promise.all([
+      supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'worker'),
+      supabase.from('jobs').select('id', { count: 'exact', head: true }).eq('status', 'active'),
+    ]);
+    workerCount = wc ?? 0;
+    activeJobCount = jc ?? 0;
+  } catch {
+    // Silently fall back to zeros — stats bar will show 0 if DB is unavailable
+  }
+
   return (
     <>
       <Header />
       <main className="flex-1">
         <HeroSection locale={locale} />
-        <StatsBar locale={locale} />
+        <StatsBar locale={locale} workerCount={workerCount} activeJobCount={activeJobCount} />
         <HowItWorksSection />
         <CategoriesSection locale={locale} />
         <TrustSection />
@@ -236,7 +248,25 @@ function HeroSection({ locale }: { locale: string }) {
 }
 
 /* ── Stats bar ───────────────────────────────────────────────────── */
-function StatsBar({ locale }: { locale: string }) {
+function StatsBar({ locale, workerCount, activeJobCount }: { locale: string; workerCount: number; activeJobCount: number }) {
+  const stats = [
+    {
+      value: workerCount > 0 ? `${workerCount}+` : '—',
+      labelRu: 'мастеров',
+      labelRo: 'meșteri',
+    },
+    {
+      value: activeJobCount > 0 ? String(activeJobCount) : '—',
+      labelRu: 'активных заявок',
+      labelRo: 'cereri active',
+    },
+    {
+      value: '4.9★',
+      labelRu: 'средний рейтинг',
+      labelRo: 'rating mediu',
+    },
+  ];
+
   return (
     <div
       style={{
@@ -248,17 +278,17 @@ function StatsBar({ locale }: { locale: string }) {
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: `repeat(${STATS.length}, 1fr)`,
+            gridTemplateColumns: `repeat(${stats.length}, 1fr)`,
             gap: 0,
           }}
         >
-          {STATS.map((s, i) => (
+          {stats.map((s, i) => (
             <div
               key={i}
               style={{
                 padding: '20px 16px',
                 textAlign: 'center',
-                borderRight: i < STATS.length - 1 ? '1px solid var(--glass-border)' : 'none',
+                borderRight: i < stats.length - 1 ? '1px solid var(--glass-border)' : 'none',
               }}
             >
               <div

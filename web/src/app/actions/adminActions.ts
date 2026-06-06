@@ -76,6 +76,23 @@ export async function expireJobs(formData: FormData) {
   // Note: returned value ignored — form actions must return void
 }
 
+export async function approveWorker(formData: FormData) {
+  const userId = formData.get('userId') as string;
+  const locale = formData.get('locale') as string;
+
+  const supabase = await createClient();
+  await requireAdmin(supabase);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase.from('profiles_worker') as any)
+    .update({ verified: true })
+    .eq('id', userId);
+
+  if (error) throw new Error(error.message);
+  revalidatePath(`/${locale}/admin`);
+  revalidatePath(`/${locale}/workers`);
+}
+
 export async function addCredits(formData: FormData) {
   const userId = formData.get('userId') as string;
   const amount = Number(formData.get('amount') ?? 10);
