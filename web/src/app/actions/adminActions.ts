@@ -61,6 +61,21 @@ export async function blockJob(formData: FormData) {
   revalidatePath(`/${locale}/jobs`);
 }
 
+export async function expireJobs(formData: FormData) {
+  const locale = formData.get('locale') as string;
+
+  const supabase = await createClient();
+  await requireAdmin(supabase);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any).rpc('expire_overdue_jobs');
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`/${locale}/admin`);
+  revalidatePath(`/${locale}/jobs`);
+  // Note: returned value ignored — form actions must return void
+}
+
 export async function addCredits(formData: FormData) {
   const userId = formData.get('userId') as string;
   const amount = Number(formData.get('amount') ?? 10);

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import { createClient } from '@/lib/supabase/server';
-import { blockUser, unblockUser, blockJob } from '@/app/actions/adminActions';
+import { blockUser, unblockUser, blockJob, expireJobs } from '@/app/actions/adminActions';
 import type { Profile, Job } from '@/lib/supabase/types';
 
 type Props = { params: Promise<{ locale: string }> };
@@ -76,18 +76,30 @@ export default async function AdminPage({ params }: Props) {
             ))}
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
             {[
               { label: 'Всего заявок', value: jobCount ?? 0, icon: '📋' },
               { label: 'Активных заявок', value: activeJobs, icon: '✅' },
               { label: 'Отзывов', value: reviewCount ?? 0, icon: '⭐' },
-            ].map(({ label, value, icon }) => (
+              { label: 'Просрочено', value: jobs.filter((j) => j.status === 'active' && !!(j as any).expires_at && new Date((j as any).expires_at) < new Date()).length, icon: '⏰', danger: true },
+            ].map(({ label, value, icon, danger }) => (
               <div key={label} className="card p-5 text-center">
                 <div style={{ fontSize: 28, marginBottom: 4 }}>{icon}</div>
-                <div className="font-bold text-2xl" style={{ color: 'var(--text)' }}>{value}</div>
+                <div className="font-bold text-2xl" style={{ color: danger && value > 0 ? 'var(--danger)' : 'var(--text)' }}>{value}</div>
                 <div className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>{label}</div>
               </div>
             ))}
+          </div>
+
+          {/* Quick actions */}
+          <div className="card p-4 mb-6 flex flex-wrap gap-3 items-center">
+            <span className="text-sm font-semibold" style={{ color: 'var(--text)' }}>⚡ Быстрые действия:</span>
+            <form action={expireJobs}>
+              <input type="hidden" name="locale" value={locale} />
+              <button type="submit" className="btn-secondary" style={{ height: 34, fontSize: 12, padding: '0 14px' }}>
+                ⏰ Закрыть просроченные заявки
+              </button>
+            </form>
           </div>
 
           {/* Users table */}

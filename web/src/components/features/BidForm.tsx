@@ -103,9 +103,9 @@ export default function BidForm({ jobId, locale, expired = false }: Props) {
         <p style={{ color: 'var(--text-muted)' }}>
           {t('Пополните баланс в личном кабинете', 'Reîncărcați soldul în contul personal')}
         </p>
-        <a href={`/${locale}/account/worker`} className="btn-secondary text-center" style={{ fontSize: 13, height: 34, textDecoration: 'none' }}>
-          {t('Пополнить кредиты →', 'Adaugă credite →')}
-        </a>
+        <Link href={`/${locale}/credits`} className="btn-primary text-center" style={{ fontSize: 13, height: 36, textDecoration: 'none' }}>
+          💳 {t('Купить кредиты →', 'Cumpără credite →')}
+        </Link>
       </div>
     );
   }

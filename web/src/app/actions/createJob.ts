@@ -26,6 +26,10 @@ export async function createJob(formData: {
 
   const budgetNum = formData.budget ? parseFloat(formData.budget) : null;
 
+  // Jobs expire in 30 days by default; urgent jobs expire in 7 days
+  const expiryDays = formData.urgent ? 7 : 30;
+  const expiresAt = new Date(Date.now() + expiryDays * 24 * 60 * 60 * 1000).toISOString();
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase as any)
     .from('jobs')
@@ -43,6 +47,7 @@ export async function createJob(formData: {
       needs_quote: formData.needsQuote,
       photos: formData.photos.length > 0 ? formData.photos : null,
       status: 'active',
+      expires_at: expiresAt,
     })
     .select('id')
     .single();

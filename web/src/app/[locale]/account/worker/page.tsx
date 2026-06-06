@@ -159,6 +159,13 @@ export default async function WorkerDashboard({ params }: Props) {
                   {locale === 'ru' ? 'кредитов' : 'credite'}
                 </div>
               </div>
+              <Link
+                href={`/${locale}/credits`}
+                className="text-xs px-3 py-1.5 rounded-full font-semibold"
+                style={{ background: 'var(--accent-dim)', color: 'var(--accent)', textDecoration: 'none' }}
+              >
+                + {locale === 'ru' ? 'Купить' : 'Cumpără'}
+              </Link>
               {(worker?.bid_credits ?? 0) === 0 && (
                 <span className="text-xs px-3 py-1.5 rounded-full font-semibold"
                   style={{ background: 'rgba(239,68,68,.1)', color: 'var(--danger)' }}>
