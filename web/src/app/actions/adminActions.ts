@@ -73,7 +73,7 @@ export async function expireJobs(formData: FormData) {
 
   revalidatePath(`/${locale}/admin`);
   revalidatePath(`/${locale}/jobs`);
-  return { expired: data as number };
+  // Note: returned value ignored — form actions must return void
 }
 
 export async function addCredits(formData: FormData) {
