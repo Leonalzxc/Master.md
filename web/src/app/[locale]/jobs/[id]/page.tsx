@@ -61,8 +61,9 @@ export default async function JobDetailPage({ params }: Props) {
   const job = rawJob as Job | null;
   if (jobError || !job) notFound();
 
-  const jobAny = job as unknown as { client_id: string; selected_worker_id?: string };
+  const jobAny = job as unknown as { client_id: string; selected_worker_id?: string; expires_at: string };
   const isOwner = !!(user && jobAny.client_id === user.id);
+  const isExpired = new Date(jobAny.expires_at) < new Date();
 
   // Fetch selected worker contacts (for client) + client phone (for selected worker)
   const selectedWorkerId = jobAny.selected_worker_id;
@@ -122,6 +123,7 @@ export default async function JobDetailPage({ params }: Props) {
                   </Badge>
                   {job.urgent && <Badge variant="urgent">⚡ Срочно</Badge>}
                   {job.needs_quote && <Badge variant="muted">📋 Нужна смета</Badge>}
+                  {isExpired && <Badge variant="muted">⏰ {locale === 'ru' ? 'Истёк срок' : 'Expirat'}</Badge>}
                 </div>
                 <h1
                   className="font-bold text-xl"
@@ -307,7 +309,7 @@ export default async function JobDetailPage({ params }: Props) {
                             ? 'Войдите и отправьте свой отклик с ценой и сроками.'
                             : 'Autentifică-te și trimite oferta ta cu preț și termene.'}
                         </p>
-                        <BidForm jobId={id} locale={locale} />
+                        <BidForm jobId={id} locale={locale} expired={isExpired} />
                         <div
                           className="rounded-xl p-3 text-xs text-center"
                           style={{ background: 'var(--accent-dim)', color: 'var(--accent)' }}

@@ -5,12 +5,13 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { createBid } from '@/app/actions/createBid';
 
-type AuthState = 'loading' | 'guest' | 'not_worker' | 'ready' | 'already_bid';
+type AuthState = 'loading' | 'guest' | 'not_worker' | 'ready' | 'already_bid' | 'no_credits';
 
-interface Props { jobId: string; locale: string }
+interface Props { jobId: string; locale: string; expired?: boolean }
 
-export default function BidForm({ jobId, locale }: Props) {
+export default function BidForm({ jobId, locale, expired = false }: Props) {
   const [authState, setAuthState] = useState<AuthState>('loading');
+  const [bidCredits, setBidCredits] = useState<number | null>(null);
   const [open, setOpen] = useState(false);
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -26,17 +27,23 @@ export default function BidForm({ jobId, locale }: Props) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setAuthState('guest'); return; }
 
-      // Check role from profile (faster than profiles_worker join)
-      const [{ data: profile }, { data: existingBid }] = await Promise.all([
+      // Check role + existing bid + credits in parallel
+      const [{ data: profile }, { data: existingBid }, { data: workerData }] = await Promise.all([
         supabase.from('profiles').select('role').eq('id', user.id).single(),
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (supabase.from('bids') as any).select('id').eq('job_id', jobId).eq('worker_id', user.id).maybeSingle(),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (supabase.from('profiles_worker') as any).select('bid_credits').eq('id', user.id).single(),
       ]);
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       if ((profile as any)?.role !== 'worker') { setAuthState('not_worker'); return; }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       if (existingBid as any) { setAuthState('already_bid'); return; }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const credits = (workerData as any)?.bid_credits ?? 0;
+      setBidCredits(credits);
+      if (credits < 1) { setAuthState('no_credits'); return; }
       setAuthState('ready');
     }
 
@@ -64,6 +71,7 @@ export default function BidForm({ jobId, locale }: Props) {
       const msg = err instanceof Error ? err.message : '';
       if (msg === 'not_authenticated') setAuthState('guest');
       else if (msg === 'already_bid') setAuthState('already_bid');
+      else if (msg === 'no_credits') setAuthState('no_credits');
       else setServerError(t('Ошибка. Попробуйте снова.', 'Eroare. Încercați din nou.'));
     } finally {
       setLoading(false);
@@ -72,6 +80,34 @@ export default function BidForm({ jobId, locale }: Props) {
 
   if (authState === 'loading') {
     return <div style={{ height: 48 }} />;
+  }
+
+  // Job expired — no bidding allowed
+  if (expired) {
+    return (
+      <div className="rounded-xl p-4 text-sm text-center" style={{ background: 'var(--surface-2)', color: 'var(--text-muted)' }}>
+        ⏰ {t('Срок подачи откликов истёк', 'Termenul de ofertare a expirat')}
+      </div>
+    );
+  }
+
+  if (authState === 'no_credits') {
+    return (
+      <div className="rounded-xl p-4 flex flex-col gap-3 text-sm" style={{ background: 'rgba(239,68,68,.06)', border: '1px solid rgba(239,68,68,.2)' }}>
+        <div className="flex items-center gap-2">
+          <span className="text-xl">💳</span>
+          <p className="font-semibold" style={{ color: 'var(--danger)' }}>
+            {t('Нет кредитов для отклика', 'Nu aveți credite pentru ofertă')}
+          </p>
+        </div>
+        <p style={{ color: 'var(--text-muted)' }}>
+          {t('Пополните баланс в личном кабинете', 'Reîncărcați soldul în contul personal')}
+        </p>
+        <a href={`/${locale}/account/worker`} className="btn-secondary text-center" style={{ fontSize: 13, height: 34, textDecoration: 'none' }}>
+          {t('Пополнить кредиты →', 'Adaugă credite →')}
+        </a>
+      </div>
+    );
   }
 
   if (authState === 'guest') {
@@ -125,9 +161,17 @@ export default function BidForm({ jobId, locale }: Props) {
 
   if (!open) {
     return (
-      <button onClick={() => setOpen(true)} className="btn-primary w-full" style={{ justifyContent: 'center', fontSize: 15, height: 48 }}>
-        {t('Откликнуться на заявку', 'Trimite oferta')}
-      </button>
+      <div className="flex flex-col gap-2">
+        <button onClick={() => setOpen(true)} className="btn-primary w-full" style={{ justifyContent: 'center', fontSize: 15, height: 48 }}>
+          {t('Откликнуться на заявку', 'Trimite oferta')}
+        </button>
+        {bidCredits !== null && (
+          <p className="text-xs text-center" style={{ color: 'var(--text-muted)' }}>
+            💳 {t(`Баланс: ${bidCredits} кредит${bidCredits === 1 ? '' : bidCredits < 5 ? 'а' : 'ов'}`, `Credite: ${bidCredits}`)}
+            {' · '}{t('Отклик стоит 1 кредит', 'O ofertă costă 1 credit')}
+          </p>
+        )}
+      </div>
     );
   }
 
