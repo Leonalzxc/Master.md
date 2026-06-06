@@ -171,7 +171,7 @@ export default async function CreditsPage({ params }: Props) {
                 </p>
                 <div className="flex flex-col gap-2">
                   <a
-                    href="https://t.me/mastermoldova"
+                    href="https://t.me/kentukaa"
                     target="_blank" rel="noopener noreferrer"
                     className="btn-secondary text-center"
                     style={{ fontSize: 13, height: 38 }}
@@ -179,7 +179,7 @@ export default async function CreditsPage({ params }: Props) {
                     ✈️ Telegram
                   </a>
                   <a
-                    href="https://wa.me/37360000000"
+                    href="https://wa.me/373779922006"
                     target="_blank" rel="noopener noreferrer"
                     className="btn-secondary text-center"
                     style={{ fontSize: 13, height: 38 }}
