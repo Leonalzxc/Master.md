@@ -96,4 +96,3 @@ EXCEPTION WHEN OTHERS THEN
   NULL;
 END;
 $do$;
-$$;
