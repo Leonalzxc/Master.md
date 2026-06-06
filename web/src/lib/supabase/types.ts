@@ -22,6 +22,7 @@ export type Profile = {
   city: string | null;
   avatar_url: string | null;
   telegram_chat_id?: number | null;
+  blocked_at?: string | null;
   created_at: string;
   updated_at?: string | null;
 };
