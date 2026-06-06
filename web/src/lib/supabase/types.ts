@@ -34,6 +34,7 @@ export type ProfileWorker = {
   experience_yrs: number | null;
   is_pro: boolean;
   verified: boolean;
+  bid_credits: number;
   rating_avg: number;
   rating_count: number;
   portfolio: string[];
