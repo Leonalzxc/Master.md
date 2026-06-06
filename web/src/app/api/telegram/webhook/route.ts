@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/supabase/server';
 
 /**
  * Telegram Bot Webhook
@@ -13,11 +13,14 @@ import { createClient } from '@/lib/supabase/server';
  *   2. User presses "Start" → bot receives /start USER_ID
  *   3. This webhook stores profiles.telegram_chat_id = message.chat.id
  *   4. User sees confirmation message
+ *
+ * NOTE: Uses service-role client (bypasses RLS) because this is a
+ * server-to-server webhook — no user session exists in this context.
  */
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TG_API = `https://api.telegram.org/bot${BOT_TOKEN}`;
-const WEBHOOK_SECRET = process.env.TELEGRAM_WEBHOOK_SECRET; // optional extra security
+const WEBHOOK_SECRET = process.env.TELEGRAM_WEBHOOK_SECRET;
 
 async function sendReply(chatId: number, text: string) {
   if (!BOT_TOKEN) return;
@@ -29,7 +32,7 @@ async function sendReply(chatId: number, text: string) {
 }
 
 export async function POST(req: NextRequest) {
-  // Optional: verify secret header from Telegram
+  // Verify secret header from Telegram (optional but recommended)
   if (WEBHOOK_SECRET) {
     const secret = req.headers.get('x-telegram-bot-api-secret-token');
     if (secret !== WEBHOOK_SECRET) {
@@ -55,6 +58,9 @@ export async function POST(req: NextRequest) {
   const chatId = message.chat.id;
   const text = message.text ?? '';
 
+  // Service-role client bypasses RLS — required since no user session exists in webhook
+  const supabase = createServiceClient();
+
   // Handle /start <userId>
   if (text.startsWith('/start')) {
     const userId = text.split(' ')[1]?.trim();
@@ -65,8 +71,6 @@ export async function POST(req: NextRequest) {
       );
       return NextResponse.json({ ok: true });
     }
-
-    const supabase = await createClient();
 
     // Check if this chat_id already linked to someone else
     const { data: existing } = await supabase
@@ -80,7 +84,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
-    // Store telegram_chat_id
+    // Store telegram_chat_id (service role bypasses RLS — safe to update any profile)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: profile, error } = await (supabase.from('profiles') as any)
       .update({ telegram_chat_id: chatId })
@@ -103,7 +107,6 @@ export async function POST(req: NextRequest) {
 
   // Handle /stop — unlink
   if (text.startsWith('/stop')) {
-    const supabase = await createClient();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (supabase.from('profiles') as any)
       .update({ telegram_chat_id: null })
