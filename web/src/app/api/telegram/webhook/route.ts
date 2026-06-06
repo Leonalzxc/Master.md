@@ -93,7 +93,9 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (error || !profile) {
-      await sendReply(chatId, '❌ Не удалось привязать аккаунт. Попробуйте снова из профиля на сайте.');
+      // Debug: log actual error to server logs
+      console.error('[TG webhook] update error:', JSON.stringify(error), 'userId:', userId, 'hasServiceKey:', !!process.env.SUPABASE_SERVICE_ROLE_KEY);
+      await sendReply(chatId, `❌ Ошибка: ${error?.message ?? 'profile not found'}\nuserId: ${userId?.slice(0,8)}…`);
       return NextResponse.json({ ok: true });
     }
 
