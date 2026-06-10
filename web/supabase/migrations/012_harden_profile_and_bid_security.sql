@@ -40,7 +40,7 @@ AS $$
 DECLARE
   v_is_admin boolean := public.is_admin_user(auth.uid());
 BEGIN
-  IF auth.role() = 'service_role' THEN
+  IF auth.uid() IS NULL OR auth.role() = 'service_role' THEN
     RETURN NEW;
   END IF;
 
@@ -81,7 +81,7 @@ AS $$
 DECLARE
   v_is_admin boolean := public.is_admin_user(auth.uid());
 BEGIN
-  IF auth.role() = 'service_role' THEN
+  IF auth.uid() IS NULL OR auth.role() = 'service_role' THEN
     RETURN NEW;
   END IF;
 
