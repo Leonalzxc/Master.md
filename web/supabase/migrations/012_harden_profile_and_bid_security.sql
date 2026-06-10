@@ -44,6 +44,10 @@ BEGIN
     RETURN NEW;
   END IF;
 
+  IF current_setting('app.bypass_worker_sensitive_guard', true) = 'true' THEN
+    RETURN NEW;
+  END IF;
+
   IF NOT v_is_admin THEN
     IF TG_OP = 'INSERT' THEN
       IF NEW.role = 'admin'
@@ -171,6 +175,8 @@ BEGIN
     RETURN false;
   END IF;
 
+  PERFORM set_config('app.bypass_worker_sensitive_guard', 'true', true);
+
   UPDATE public.profiles_worker
   SET bid_credits = bid_credits - 1
   WHERE id = p_worker_id;
@@ -239,6 +245,8 @@ BEGIN
   IF v_credits IS NULL OR v_credits < 1 THEN
     RAISE EXCEPTION 'no_credits' USING ERRCODE = 'P0001';
   END IF;
+
+  PERFORM set_config('app.bypass_worker_sensitive_guard', 'true', true);
 
   UPDATE public.profiles_worker
   SET bid_credits = bid_credits - 1
