@@ -44,10 +44,6 @@ BEGIN
     RETURN NEW;
   END IF;
 
-  IF current_setting('app.bypass_worker_sensitive_guard', true) = 'true' THEN
-    RETURN NEW;
-  END IF;
-
   IF NOT v_is_admin THEN
     IF TG_OP = 'INSERT' THEN
       IF NEW.role = 'admin'
@@ -86,6 +82,10 @@ DECLARE
   v_is_admin boolean := public.is_admin_user(auth.uid());
 BEGIN
   IF auth.uid() IS NULL OR auth.role() = 'service_role' THEN
+    RETURN NEW;
+  END IF;
+
+  IF current_setting('app.bypass_worker_sensitive_guard', true) = 'true' THEN
     RETURN NEW;
   END IF;
 
