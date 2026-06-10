@@ -9,11 +9,23 @@ export async function selectWorker(jobId: string, bidId: string, workerId: strin
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
 
-  // Verify the current user owns this job
+  // Verify the current user owns this active job
   const { data: rawJob } = await supabase.from('jobs').select('*').eq('id', jobId).single();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const job = rawJob as any;
   if (!job || job.client_id !== user.id) throw new Error('Not authorized');
+  if (job.status !== 'active') throw new Error('Invalid job status');
+
+  const { data: rawBid } = await supabase
+    .from('bids')
+    .select('id, job_id, worker_id')
+    .eq('id', bidId)
+    .single();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const bid = rawBid as any;
+  if (!bid || bid.job_id !== jobId || bid.worker_id !== workerId) {
+    throw new Error('Invalid bid selection');
+  }
 
   // Select this bid, reject all others for the same job
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -26,7 +38,7 @@ export async function selectWorker(jobId: string, bidId: string, workerId: strin
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error: e3 } = await (supabase.from('jobs') as any).update({
     status: 'in_progress',
-    selected_worker_id: workerId,
+    selected_worker_id: bid.worker_id,
   }).eq('id', jobId);
   if (e3) throw new Error(e3.message);
 
@@ -38,7 +50,7 @@ export async function selectWorker(jobId: string, bidId: string, workerId: strin
     const { data: workerProfile } = await supabase
       .from('profiles')
       .select('telegram_chat_id, name')
-      .eq('id', workerId)
+      .eq('id', bid.worker_id)
       .single();
 
     const worker = workerProfile as { telegram_chat_id: number | null; name: string | null } | null;
