@@ -77,7 +77,7 @@ assertIncludes(
   'worker profile system fields need column grants',
 );
 
-const workerUpdateGrant = migration.match(/GRANT UPDATE \(([\s\S]*?)\) ON TABLE public\.profiles_worker/)?.[1] ?? '';
+const workerUpdateGrant = migration.match(/GRANT UPDATE\s+\(([^)]*)\)\s+ON TABLE public\.profiles_worker/)?.[1] ?? '';
 for (const protectedColumn of ['bid_credits', 'rating_avg', 'rating_count', 'is_pro', 'verified', 'completed_at']) {
   assertNotIncludes(workerUpdateGrant, protectedColumn, `worker profile grant must not expose ${protectedColumn}`);
 }
