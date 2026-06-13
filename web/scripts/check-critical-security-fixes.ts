@@ -38,8 +38,13 @@ assertIncludes(
   'REVOKE INSERT, UPDATE ON TABLE public.bids FROM anon, authenticated;',
   'browser clients must not bypass bid-credit spending',
 );
+const createBidFunction = migration.slice(
+  migration.indexOf('CREATE OR REPLACE FUNCTION public.create_bid_with_credit'),
+  migration.indexOf('REVOKE INSERT, UPDATE ON TABLE public.bids FROM anon, authenticated;'),
+);
 assert.ok(
-  migration.indexOf('INSERT INTO public.bids') < migration.indexOf('SET bid_credits = bid_credits - 1'),
+  createBidFunction.indexOf('INSERT INTO public.bids') <
+    createBidFunction.indexOf('SET bid_credits = bid_credits - 1'),
   'bid credit decrement must happen after the bid insert inside the same transaction',
 );
 
