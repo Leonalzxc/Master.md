@@ -21,23 +21,21 @@ export async function createBid(input: {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   if ((rawProfile as any)?.role !== 'worker') throw new Error('not_worker');
 
-  // Atomically deduct 1 bid credit (DB-level lock prevents race conditions)
+  // Insert the bid and spend the credit in one DB transaction so failed or
+  // duplicate bids cannot consume credits.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: credited } = await (supabase as any).rpc('spend_bid_credit', { p_worker_id: user.id });
-  if (!credited) throw new Error('no_credits');
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase.from('bids') as any).insert({
-    job_id: input.jobId,
-    worker_id: user.id,
-    price: input.price,
-    comment: input.comment.trim(),
-    start_date: input.startDate || null,
-    status: 'sent',
+  const { error } = await (supabase as any).rpc('create_bid_with_credit', {
+    p_job_id: input.jobId,
+    p_price: input.price,
+    p_comment: input.comment.trim(),
+    p_start_date: input.startDate || null,
   });
 
   if (error) {
-    if (error.code === '23505') throw new Error('already_bid');
+    if (error.message === 'already_bid' || error.code === '23505') throw new Error('already_bid');
+    if (error.message === 'no_credits') throw new Error('no_credits');
+    if (error.message === 'not_worker') throw new Error('not_worker');
+    if (error.message === 'job_not_available') throw new Error('job_not_available');
     throw new Error(error.message);
   }
 
