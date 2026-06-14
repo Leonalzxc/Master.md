@@ -357,16 +357,21 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-  IF TG_OP IN ('UPDATE', 'DELETE') THEN
-    PERFORM public.recalculate_worker_rating(OLD.worker_id);
-  END IF;
-
-  IF TG_OP IN ('INSERT', 'UPDATE')
-     AND (TG_OP = 'INSERT' OR NEW.worker_id IS DISTINCT FROM OLD.worker_id) THEN
+  IF TG_OP = 'INSERT' THEN
     PERFORM public.recalculate_worker_rating(NEW.worker_id);
+    RETURN NEW;
   END IF;
 
-  RETURN COALESCE(NEW, OLD);
+  IF TG_OP = 'UPDATE' THEN
+    PERFORM public.recalculate_worker_rating(OLD.worker_id);
+    IF NEW.worker_id IS DISTINCT FROM OLD.worker_id THEN
+      PERFORM public.recalculate_worker_rating(NEW.worker_id);
+    END IF;
+    RETURN NEW;
+  END IF;
+
+  PERFORM public.recalculate_worker_rating(OLD.worker_id);
+  RETURN OLD;
 END;
 $$;
 
