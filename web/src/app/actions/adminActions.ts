@@ -2,15 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
-
-async function requireAdmin(supabase: Awaited<ReturnType<typeof createClient>>) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('not_authenticated');
-  const { data: rawProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  if ((rawProfile as any)?.role !== 'admin') throw new Error('not_authorized');
-  return user;
-}
+import { requireAdmin } from './authGuards';
 
 export async function blockUser(formData: FormData) {
   const userId = formData.get('userId') as string;
@@ -20,9 +12,11 @@ export async function blockUser(formData: FormData) {
   await requireAdmin(supabase);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase.from('profiles') as any)
-    .update({ blocked_at: new Date().toISOString(), block_reason: 'Заблокирован администратором' })
-    .eq('id', userId);
+  const { error } = await (supabase as any).rpc('set_user_blocked', {
+    p_user_id: userId,
+    p_blocked: true,
+    p_reason: 'Заблокирован администратором',
+  });
 
   if (error) throw new Error(error.message);
   revalidatePath(`/${locale}/admin`);
@@ -36,9 +30,11 @@ export async function unblockUser(formData: FormData) {
   await requireAdmin(supabase);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase.from('profiles') as any)
-    .update({ blocked_at: null, block_reason: null })
-    .eq('id', userId);
+  const { error } = await (supabase as any).rpc('set_user_blocked', {
+    p_user_id: userId,
+    p_blocked: false,
+    p_reason: null,
+  });
 
   if (error) throw new Error(error.message);
   revalidatePath(`/${locale}/admin`);
@@ -70,18 +66,10 @@ export async function addCredits(formData: FormData) {
   await requireAdmin(supabase);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: pw } = await (supabase.from('profiles_worker') as any)
-    .select('bid_credits')
-    .eq('id', userId)
-    .single();
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const current = (pw as any)?.bid_credits ?? 0;
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase.from('profiles_worker') as any)
-    .update({ bid_credits: current + amount })
-    .eq('id', userId);
+  const { error } = await (supabase as any).rpc('admin_add_bid_credits', {
+    p_worker_id: userId,
+    p_amount: amount,
+  });
 
   if (error) throw new Error(error.message);
   revalidatePath(`/${locale}/admin`);
