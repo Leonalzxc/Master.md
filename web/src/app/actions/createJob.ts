@@ -3,6 +3,7 @@
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
+import { requireActiveUser } from './authGuards';
 
 export async function createJob(formData: {
   category: string;
@@ -18,11 +19,12 @@ export async function createJob(formData: {
   locale: string;
 }) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user)
-    redirect(`/${formData.locale}/auth?next=/${formData.locale}/request/new`);
+  const user = await requireActiveUser(supabase).catch((error: unknown) => {
+    if (error instanceof Error && error.message === 'not_authenticated') {
+      redirect(`/${formData.locale}/auth?next=/${formData.locale}/request/new`);
+    }
+    throw error;
+  });
 
   const budgetNum = formData.budget ? parseFloat(formData.budget) : null;
 

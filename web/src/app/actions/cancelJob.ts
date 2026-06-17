@@ -2,11 +2,11 @@
 
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
+import { requireActiveUser } from './authGuards';
 
 export async function cancelJob(jobId: string, locale: string) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('not_authenticated');
+  const user = await requireActiveUser(supabase);
 
   // Verify ownership and status
   const { data: rawJob } = await supabase.from('jobs').select('client_id, status').eq('id', jobId).single();

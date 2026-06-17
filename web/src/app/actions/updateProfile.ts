@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import type { Category } from '@/lib/supabase/types';
+import { requireActiveUser } from './authGuards';
 
 export async function updateProfile(data: {
   name: string;
@@ -19,8 +20,7 @@ export async function updateProfile(data: {
   locale: string;
 }) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not authenticated');
+  const user = await requireActiveUser(supabase);
 
   // Save base profile including new role
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

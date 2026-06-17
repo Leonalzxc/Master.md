@@ -11,6 +11,10 @@ type Role = 'client' | 'worker';
 const ALL_CATEGORIES = Object.keys(CATEGORY_LABELS_RU) as Category[];
 const AREAS = ['Центр', 'Северная', 'Южная', 'Молодёжная', 'Флора', 'Пэмынтень', 'Весь город'];
 
+function safeRelativeNext(next: string | undefined, fallback: string) {
+  return next?.startsWith('/') && !next.startsWith('//') ? next : fallback;
+}
+
 export default function AuthForm({ locale, next }: { locale: string; next?: string }) {
   const [screen, setScreen] = useState<Screen>('phone');
   const [phone, setPhone]   = useState('');
@@ -75,7 +79,7 @@ export default function AuthForm({ locale, next }: { locale: string; next?: stri
       // Returning user — go to account
       setLoading(false);
       setScreen('success');
-      const safeNext = next?.startsWith('/') ? next : `/${locale}/account`;
+      const safeNext = safeRelativeNext(next, `/${locale}/account`);
       setTimeout(() => { router.push(safeNext); router.refresh(); }, 500);
     } else {
       // New user — start registration flow
