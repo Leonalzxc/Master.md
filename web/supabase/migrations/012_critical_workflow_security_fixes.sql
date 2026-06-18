@@ -24,6 +24,23 @@ $$;
 REVOKE ALL ON FUNCTION public.current_user_is_admin() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.current_user_is_admin() TO anon, authenticated;
 
+CREATE OR REPLACE FUNCTION public.current_user_is_blocked()
+RETURNS boolean
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.profiles
+    WHERE id = auth.uid() AND blocked_at IS NOT NULL
+  );
+$$;
+
+REVOKE ALL ON FUNCTION public.current_user_is_blocked() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.current_user_is_blocked() TO anon, authenticated;
+
 CREATE OR REPLACE FUNCTION public.is_privileged_db_role()
 RETURNS boolean
 LANGUAGE sql
@@ -131,14 +148,33 @@ DROP POLICY IF EXISTS "client_update_bids_on_own_jobs" ON public.bids;
 DROP POLICY IF EXISTS "reviews_auth_insert" ON public.reviews;
 DROP POLICY IF EXISTS "notif_insert_any" ON public.notifications;
 
+DROP POLICY IF EXISTS "worker_admin_update" ON public.profiles_worker;
+CREATE POLICY "worker_admin_update" ON public.profiles_worker
+  FOR UPDATE
+  USING (public.current_user_is_admin())
+  WITH CHECK (public.current_user_is_admin());
+
+DROP POLICY IF EXISTS "jobs_own_insert" ON public.jobs;
+CREATE POLICY "jobs_own_insert" ON public.jobs
+  FOR INSERT
+  WITH CHECK (
+    client_id = auth.uid()
+    AND NOT public.current_user_is_blocked()
+  );
+
 DROP POLICY IF EXISTS "jobs_own_update" ON public.jobs;
 CREATE POLICY "jobs_own_cancel" ON public.jobs
   FOR UPDATE
-  USING (client_id = auth.uid() AND status = 'active')
+  USING (
+    client_id = auth.uid()
+    AND status = 'active'
+    AND NOT public.current_user_is_blocked()
+  )
   WITH CHECK (
     client_id = auth.uid()
     AND status = 'cancelled'
     AND selected_worker_id IS NULL
+    AND NOT public.current_user_is_blocked()
   );
 
 -- Keep the old function name non-exploitable for any deployments
@@ -280,6 +316,10 @@ BEGIN
     RAISE EXCEPTION 'not_authorized';
   END IF;
 
+  IF public.current_user_is_blocked() THEN
+    RAISE EXCEPTION 'user_blocked';
+  END IF;
+
   IF v_status <> 'active' THEN
     RAISE EXCEPTION 'invalid_status';
   END IF;
@@ -350,6 +390,10 @@ BEGIN
 
   IF v_client_id <> auth.uid() THEN
     RAISE EXCEPTION 'not_authorized';
+  END IF;
+
+  IF public.current_user_is_blocked() THEN
+    RAISE EXCEPTION 'user_blocked';
   END IF;
 
   IF v_status <> 'in_progress' THEN
