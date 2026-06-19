@@ -75,7 +75,7 @@ export default function AuthForm({ locale, next }: { locale: string; next?: stri
       // Returning user — go to account
       setLoading(false);
       setScreen('success');
-      const safeNext = next?.startsWith('/') ? next : `/${locale}/account`;
+      const safeNext = next?.startsWith('/') && !next.startsWith('//') ? next : `/${locale}/account`;
       setTimeout(() => { router.push(safeNext); router.refresh(); }, 500);
     } else {
       // New user — start registration flow

@@ -12,6 +12,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "i18n:check": "npx tsx scripts/i18n-sync-check.ts",
+    "security:check": "tsx scripts/check-critical-security-fixes.ts",
     "supabase:check": "node scripts/check-supabase-client.js",
     "quality": "bash scripts/quality-gate.sh"
   },

@@ -28,37 +28,18 @@ export async function submitReview(
 
   const workerId: string = job.selected_worker_id;
 
-  // Prevent duplicate reviews
-  const { data: existing } = await supabase
-    .from('reviews').select('id').eq('job_id', jobId).single();
-  if (existing) throw new Error('already_reviewed');
-
-  // Insert review
+  // Insert the review, mark the job done, and recalculate ratings atomically.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error: reviewError } = await (supabase.from('reviews') as any).insert({
-    job_id: jobId,
-    author_id: user.id,
-    worker_id: workerId,
-    rating,
-    text: text.trim() || null,
+  const { error: reviewError } = await (supabase as any).rpc('complete_job_with_review', {
+    p_job_id: jobId,
+    p_rating: rating,
+    p_text: text.trim() || null,
   });
-  if (reviewError) throw new Error(reviewError.message);
-
-  // Mark job as done
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error: doneError } = await (supabase.from('jobs') as any).update({ status: 'done' }).eq('id', jobId);
-  if (doneError) throw new Error(doneError.message);
-
-  // Recalculate worker rating
-  const { data: allReviews } = await supabase
-    .from('reviews').select('rating').eq('worker_id', workerId);
-  if (allReviews && allReviews.length > 0) {
-    const avg = allReviews.reduce((s, r) => s + (r as { rating: number }).rating, 0) / allReviews.length;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase.from('profiles_worker') as any).update({
-      rating_avg: Math.round(avg * 10) / 10,
-      rating_count: allReviews.length,
-    }).eq('id', workerId);
+  if (reviewError) {
+    if (reviewError.code === '23505' || reviewError.message === 'already_reviewed') {
+      throw new Error('already_reviewed');
+    }
+    throw new Error(reviewError.message);
   }
 
   revalidatePath(`/${locale}/jobs/${jobId}`);
