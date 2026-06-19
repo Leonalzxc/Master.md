@@ -28,6 +28,7 @@ export default async function WorkersPage({ params, searchParams }: Props) {
     .from('profiles')
     .select('*, profiles_worker(*)')
     .eq('role', 'worker')
+    .is('blocked_at', null)
     .order('name');
   // Apply city filter at DB level for efficiency
   if (city) query = (query as typeof query).eq('city', city);
