@@ -122,6 +122,10 @@ create trigger trg_guard_profile_protected_fields
 -- are changed only by admins or trusted database functions.
 -- ---------------------------------------------------------------------------
 drop policy if exists "worker_own_write" on public.profiles_worker;
+drop policy if exists "worker_own_insert" on public.profiles_worker;
+drop policy if exists "worker_own_update" on public.profiles_worker;
+drop policy if exists "worker_admin_read" on public.profiles_worker;
+drop policy if exists "worker_admin_update" on public.profiles_worker;
 
 create policy "worker_own_insert" on public.profiles_worker
   for insert
@@ -391,7 +395,11 @@ begin
    where id = p_job_id
    for update;
 
-  if not found or v_job.client_id is distinct from v_client_id then
+  if not found then
+    raise exception 'not_authorized';
+  end if;
+
+  if v_job.client_id is distinct from v_client_id then
     raise exception 'not_authorized';
   end if;
 
