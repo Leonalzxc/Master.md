@@ -280,6 +280,30 @@ export interface Database {
     };
     Views: Record<string, never>;
     Functions: {
+      create_bid: {
+        Args: {
+          p_job_id: string;
+          p_price: number;
+          p_comment: string;
+          p_start_date?: string | null;
+        };
+        Returns: string;
+      };
+      select_worker_for_job: {
+        Args: {
+          p_job_id: string;
+          p_bid_id: string;
+        };
+        Returns: string;
+      };
+      complete_job_with_review: {
+        Args: {
+          p_job_id: string;
+          p_rating: number;
+          p_text?: string | null;
+        };
+        Returns: string;
+      };
       create_notification: {
         Args: {
           p_user_id: string;

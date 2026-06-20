@@ -9,26 +9,13 @@ export async function selectWorker(jobId: string, bidId: string, workerId: strin
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
 
-  // Verify the current user owns this job
-  const { data: rawJob } = await supabase.from('jobs').select('*').eq('id', jobId).single();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const job = rawJob as any;
-  if (!job || job.client_id !== user.id) throw new Error('Not authorized');
+  const { data: selectedWorkerId, error } = await (supabase as any).rpc('select_worker_for_job', {
+    p_job_id: jobId,
+    p_bid_id: bidId,
+  });
+  if (error) throw new Error(error.message);
 
-  // Select this bid, reject all others for the same job
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error: e1 } = await (supabase.from('bids') as any).update({ status: 'selected' }).eq('id', bidId);
-  if (e1) throw new Error(e1.message);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error: e2 } = await (supabase.from('bids') as any).update({ status: 'rejected' }).eq('job_id', jobId).neq('id', bidId);
-  if (e2) throw new Error(e2.message);
-  // Update job status
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error: e3 } = await (supabase.from('jobs') as any).update({
-    status: 'in_progress',
-    selected_worker_id: workerId,
-  }).eq('id', jobId);
-  if (e3) throw new Error(e3.message);
+  const resolvedWorkerId = (selectedWorkerId as string | null) ?? workerId;
 
   revalidatePath(`/${locale}/jobs/${jobId}`);
   revalidatePath(`/${locale}/account/client`);
@@ -38,7 +25,7 @@ export async function selectWorker(jobId: string, bidId: string, workerId: strin
     const { data: workerProfile } = await supabase
       .from('profiles')
       .select('telegram_chat_id, name')
-      .eq('id', workerId)
+      .eq('id', resolvedWorkerId)
       .single();
 
     const worker = workerProfile as { telegram_chat_id: number | null; name: string | null } | null;
