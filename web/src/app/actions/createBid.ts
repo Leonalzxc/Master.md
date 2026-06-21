@@ -15,29 +15,19 @@ export async function createBid(input: {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('not_authenticated');
 
-  // Must have role = 'worker'
-  const { data: rawProfile } = await supabase
-    .from('profiles').select('role').eq('id', user.id).single();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  if ((rawProfile as any)?.role !== 'worker') throw new Error('not_worker');
-
-  // Atomically deduct 1 bid credit (DB-level lock prevents race conditions)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: credited } = await (supabase as any).rpc('spend_bid_credit', { p_worker_id: user.id });
-  if (!credited) throw new Error('no_credits');
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase.from('bids') as any).insert({
-    job_id: input.jobId,
-    worker_id: user.id,
-    price: input.price,
-    comment: input.comment.trim(),
-    start_date: input.startDate || null,
-    status: 'sent',
+  // Bid insertion and credit deduction must be one caller-bound transaction.
+  const { error } = await supabase.rpc('create_bid', {
+    p_job_id: input.jobId,
+    p_price: input.price,
+    p_comment: input.comment.trim(),
+    p_start_date: input.startDate || null,
   });
 
   if (error) {
-    if (error.code === '23505') throw new Error('already_bid');
+    if (error.message.includes('already_bid')) throw new Error('already_bid');
+    if (error.message.includes('no_credits')) throw new Error('no_credits');
+    if (error.message.includes('not_worker')) throw new Error('not_worker');
+    if (error.message.includes('job_not_active')) throw new Error('job_not_active');
     throw new Error(error.message);
   }
 
