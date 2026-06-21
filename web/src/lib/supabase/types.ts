@@ -241,41 +241,49 @@ export interface Database {
         Row: Profile;
         Insert: Omit<Profile, 'created_at'> & { created_at?: string };
         Update: Partial<Profile>;
+        Relationships: [];
       };
       profiles_worker: {
         Row: ProfileWorker;
         Insert: Omit<ProfileWorker, 'created_at'> & { created_at?: string };
         Update: Partial<ProfileWorker>;
+        Relationships: [];
       };
       jobs: {
         Row: Job;
         Insert: Partial<Job> & { client_id: string; title: string; description: string; category: string };
         Update: Partial<Job>;
+        Relationships: [];
       };
       bids: {
         Row: Bid;
         Insert: Partial<Bid> & { job_id: string; worker_id: string };
         Update: Partial<Bid>;
+        Relationships: [];
       };
       offers: {
         Row: Offer;
         Insert: Partial<Offer> & { job_id: string; worker_id: string; message: string };
         Update: Partial<Offer>;
+        Relationships: [];
       };
       reviews: {
         Row: Review;
         Insert: Partial<Review> & { worker_id: string; author_id: string; rating: number };
         Update: Partial<Review>;
+        Relationships: [];
       };
       notifications: {
         Row: Notification;
         Insert: Partial<Notification> & { user_id: string; type: string; title: string };
         Update: Partial<Notification>;
+        Relationships: [];
       };
       listing_inquiries: {
         Row: ListingInquiryInput & { id: string; created_at: string };
         Insert: ListingInquiryInput;
         Update: Partial<ListingInquiryInput>;
+        Relationships: [];
       };
     };
     Views: Record<string, never>;
