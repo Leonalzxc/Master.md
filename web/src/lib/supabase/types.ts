@@ -241,45 +241,144 @@ export interface Database {
         Row: Profile;
         Insert: Omit<Profile, 'created_at'> & { created_at?: string };
         Update: Partial<Profile>;
+        Relationships: [];
       };
       profiles_worker: {
         Row: ProfileWorker;
         Insert: Omit<ProfileWorker, 'created_at'> & { created_at?: string };
         Update: Partial<ProfileWorker>;
+        Relationships: [
+          {
+            foreignKeyName: 'profiles_worker_id_fkey';
+            columns: ['id'];
+            isOneToOne: true;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
       };
       jobs: {
         Row: Job;
         Insert: Partial<Job> & { client_id: string; title: string; description: string; category: string };
         Update: Partial<Job>;
+        Relationships: [
+          {
+            foreignKeyName: 'jobs_client_id_fkey';
+            columns: ['client_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'jobs_selected_worker_id_fkey';
+            columns: ['selected_worker_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
       };
       bids: {
         Row: Bid;
         Insert: Partial<Bid> & { job_id: string; worker_id: string };
         Update: Partial<Bid>;
+        Relationships: [
+          {
+            foreignKeyName: 'bids_job_id_fkey';
+            columns: ['job_id'];
+            isOneToOne: false;
+            referencedRelation: 'jobs';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'bids_worker_id_fkey';
+            columns: ['worker_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
       };
       offers: {
         Row: Offer;
         Insert: Partial<Offer> & { job_id: string; worker_id: string; message: string };
         Update: Partial<Offer>;
+        Relationships: [];
       };
       reviews: {
         Row: Review;
         Insert: Partial<Review> & { worker_id: string; author_id: string; rating: number };
         Update: Partial<Review>;
+        Relationships: [
+          {
+            foreignKeyName: 'reviews_job_id_fkey';
+            columns: ['job_id'];
+            isOneToOne: false;
+            referencedRelation: 'jobs';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'reviews_author_id_fkey';
+            columns: ['author_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'reviews_worker_id_fkey';
+            columns: ['worker_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
       };
       notifications: {
         Row: Notification;
         Insert: Partial<Notification> & { user_id: string; type: string; title: string };
         Update: Partial<Notification>;
+        Relationships: [];
       };
       listing_inquiries: {
         Row: ListingInquiryInput & { id: string; created_at: string };
         Insert: ListingInquiryInput;
         Update: Partial<ListingInquiryInput>;
+        Relationships: [];
       };
     };
     Views: Record<string, never>;
     Functions: {
+      create_bid: {
+        Args: {
+          p_job_id: string;
+          p_price: number | null;
+          p_comment: string;
+          p_start_date?: string | null;
+        };
+        Returns: string;
+      };
+      select_worker_for_job: {
+        Args: {
+          p_job_id: string;
+          p_bid_id: string;
+        };
+        Returns: string;
+      };
+      complete_job_with_review: {
+        Args: {
+          p_job_id: string;
+          p_rating: number;
+          p_text?: string | null;
+        };
+        Returns: string;
+      };
+      admin_add_bid_credits: {
+        Args: {
+          p_worker_id: string;
+          p_amount: number;
+        };
+        Returns: number;
+      };
       create_notification: {
         Args: {
           p_user_id: string;
