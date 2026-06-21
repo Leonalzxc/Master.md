@@ -37,6 +37,7 @@ assertInvariant(
 );
 assertInvariant(
   migration.includes('CREATE TRIGGER trg_protect_worker_system_fields') &&
+    migration.includes("current_setting('app.bypass_worker_system_fields', true) = 'on'") &&
     migration.includes('NEW.bid_credits := OLD.bid_credits') &&
     migration.includes('NEW.verified := OLD.verified') &&
     migration.includes('NEW.rating_avg := OLD.rating_avg'),
@@ -53,16 +54,16 @@ assertInvariant(
   'caller-supplied spend_bid_credit RPC must be removed',
 );
 assertInvariant(
-  /CREATE OR REPLACE FUNCTION public\.create_bid\([\s\S]*v_worker_id uuid := auth\.uid\(\)[\s\S]*FOR UPDATE[\s\S]*already_bid[\s\S]*bid_credits = bid_credits - 1/.test(migration),
-  'create_bid must bind to auth.uid, lock rows, detect duplicates, and decrement credits atomically',
+  /CREATE OR REPLACE FUNCTION public\.create_bid\([\s\S]*v_worker_id uuid := auth\.uid\(\)[\s\S]*FOR UPDATE[\s\S]*already_bid[\s\S]*set_config\('app\.bypass_worker_system_fields'[\s\S]*bid_credits = bid_credits - 1/.test(migration),
+  'create_bid must bind to auth.uid, lock rows, detect duplicates, and decrement credits atomically through the trusted bypass',
 );
 assertInvariant(
   /CREATE OR REPLACE FUNCTION public\.select_worker_for_job\([\s\S]*SELECT worker_id[\s\S]*job_id = p_job_id[\s\S]*selected_worker_id = v_worker_id/.test(migration),
   'select_worker_for_job must derive the worker from the selected bid',
 );
 assertInvariant(
-  /CREATE OR REPLACE FUNCTION public\.complete_job_with_review\([\s\S]*status <> 'in_progress'[\s\S]*INSERT INTO public\.reviews[\s\S]*rating_avg = stats\.avg_rating/.test(migration),
-  'complete_job_with_review must atomically insert reviews, complete jobs, and update ratings',
+  /CREATE OR REPLACE FUNCTION public\.complete_job_with_review\([\s\S]*status <> 'in_progress'[\s\S]*INSERT INTO public\.reviews[\s\S]*set_config\('app\.bypass_worker_system_fields'[\s\S]*rating_avg = stats\.avg_rating/.test(migration),
+  'complete_job_with_review must atomically insert reviews, complete jobs, and update ratings through the trusted bypass',
 );
 
 assertInvariant(createBid.includes("rpc('create_bid'"), 'createBid action must use create_bid RPC');

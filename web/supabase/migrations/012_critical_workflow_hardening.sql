@@ -55,8 +55,14 @@ SET search_path = public
 AS $$
 DECLARE
   v_is_admin boolean;
+  v_is_system_update boolean;
 BEGIN
   v_is_admin := public.current_user_is_admin();
+  v_is_system_update := current_setting('app.bypass_worker_system_fields', true) = 'on';
+
+  IF v_is_system_update THEN
+    RETURN NEW;
+  END IF;
 
   IF TG_OP = 'INSERT' THEN
     IF NOT v_is_admin AND NEW.role = 'admin' THEN
@@ -326,6 +332,8 @@ BEGIN
   VALUES (p_job_id, v_worker_id, p_price, coalesce(btrim(p_comment), ''), p_start_date, 'sent')
   RETURNING id INTO v_bid_id;
 
+  PERFORM set_config('app.bypass_worker_system_fields', 'on', true);
+
   UPDATE public.profiles_worker
      SET bid_credits = bid_credits - 1
    WHERE id = v_worker_id;
@@ -454,6 +462,8 @@ BEGIN
   UPDATE public.jobs
      SET status = 'done'
    WHERE id = p_job_id;
+
+  PERFORM set_config('app.bypass_worker_system_fields', 'on', true);
 
   UPDATE public.profiles_worker pw
      SET rating_avg = stats.avg_rating,
