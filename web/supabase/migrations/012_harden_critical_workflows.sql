@@ -37,6 +37,8 @@ $$;
 
 revoke all on function public.current_user_is_admin() from public;
 revoke all on function public.current_user_is_unblocked() from public;
+grant execute on function public.current_user_is_admin() to anon;
+grant execute on function public.current_user_is_unblocked() to anon;
 grant execute on function public.current_user_is_admin() to authenticated;
 grant execute on function public.current_user_is_unblocked() to authenticated;
 
