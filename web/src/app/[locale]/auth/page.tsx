@@ -11,6 +11,14 @@ type Props = {
   searchParams: Promise<{ next?: string }>;
 };
 
+function safeRelativePath(next: string | undefined, fallback: string) {
+  if (!next || !next.startsWith('/') || next.startsWith('//') || next.includes('\\')) {
+    return fallback;
+  }
+
+  return next;
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
   return { title: locale === 'ru' ? 'Вход' : 'Autentificare' };
@@ -24,7 +32,7 @@ export default async function AuthPage({ params, searchParams }: Props) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   // Validate next to prevent open redirect (must be relative path)
-  const safeNext = next?.startsWith('/') ? next : `/${locale}/account`;
+  const safeNext = safeRelativePath(next, `/${locale}/account`);
   if (user) redirect(safeNext);
 
   return (

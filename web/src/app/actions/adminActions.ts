@@ -70,18 +70,10 @@ export async function addCredits(formData: FormData) {
   await requireAdmin(supabase);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: pw } = await (supabase.from('profiles_worker') as any)
-    .select('bid_credits')
-    .eq('id', userId)
-    .single();
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const current = (pw as any)?.bid_credits ?? 0;
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase.from('profiles_worker') as any)
-    .update({ bid_credits: current + amount })
-    .eq('id', userId);
+  const { error } = await (supabase as any).rpc('admin_add_bid_credits', {
+    p_worker_id: userId,
+    p_amount: amount,
+  });
 
   if (error) throw new Error(error.message);
   revalidatePath(`/${locale}/admin`);

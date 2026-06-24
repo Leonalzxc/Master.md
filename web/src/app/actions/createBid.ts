@@ -15,25 +15,13 @@ export async function createBid(input: {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('not_authenticated');
 
-  // Must have role = 'worker'
-  const { data: rawProfile } = await supabase
-    .from('profiles').select('role').eq('id', user.id).single();
+  // Create the bid and spend one credit in the same checked DB transaction.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  if ((rawProfile as any)?.role !== 'worker') throw new Error('not_worker');
-
-  // Atomically deduct 1 bid credit (DB-level lock prevents race conditions)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: credited } = await (supabase as any).rpc('spend_bid_credit', { p_worker_id: user.id });
-  if (!credited) throw new Error('no_credits');
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase.from('bids') as any).insert({
-    job_id: input.jobId,
-    worker_id: user.id,
-    price: input.price,
-    comment: input.comment.trim(),
-    start_date: input.startDate || null,
-    status: 'sent',
+  const { error } = await (supabase as any).rpc('create_bid', {
+    p_job_id: input.jobId,
+    p_price: input.price,
+    p_comment: input.comment,
+    p_start_date: input.startDate || null,
   });
 
   if (error) {
