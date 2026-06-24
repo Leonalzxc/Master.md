@@ -29,24 +29,25 @@ export async function updateProfile(data: {
     .eq('id', user.id);
   if (profileError) throw new Error(profileError.message);
 
-  // Always upsert profiles_worker so the record exists when user switches to worker.
-  // IMPORTANT: do NOT include system-managed fields (is_pro, verified, bid_credits,
-  // rating_avg, rating_count) — they are managed by DB triggers / admin, not here.
-  const expNum = data.experience_yrs ? parseInt(data.experience_yrs, 10) : null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error: workerError } = await (supabase.from('profiles_worker') as any)
-    .upsert({
-      id: user.id,
-      bio: data.bio.trim() || null,
-      categories: data.categories.length > 0 ? data.categories : [],
-      areas: data.areas.length > 0 ? data.areas : [],
-      experience_yrs: expNum,
-      viber: data.viber.trim() || null,
-      telegram: data.telegram.trim() || null,
-      whatsapp: data.whatsapp.trim() || null,
-      photos: data.portfolio_photos && data.portfolio_photos.length > 0 ? data.portfolio_photos : null,
-    }, { onConflict: 'id', ignoreDuplicates: false });
-  if (workerError) throw new Error(workerError.message);
+  if (data.role === 'worker') {
+    // IMPORTANT: do NOT include system-managed fields (is_pro, verified,
+    // bid_credits, rating_avg, rating_count) — they are managed by DB/admin.
+    const expNum = data.experience_yrs ? parseInt(data.experience_yrs, 10) : null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: workerError } = await (supabase.from('profiles_worker') as any)
+      .upsert({
+        id: user.id,
+        bio: data.bio.trim() || null,
+        categories: data.categories.length > 0 ? data.categories : [],
+        areas: data.areas.length > 0 ? data.areas : [],
+        experience_yrs: expNum,
+        viber: data.viber.trim() || null,
+        telegram: data.telegram.trim() || null,
+        whatsapp: data.whatsapp.trim() || null,
+        photos: data.portfolio_photos && data.portfolio_photos.length > 0 ? data.portfolio_photos : null,
+      }, { onConflict: 'id', ignoreDuplicates: false });
+    if (workerError) throw new Error(workerError.message);
+  }
 
   revalidatePath(`/${data.locale}/account/profile`);
   revalidatePath(`/${data.locale}/account/client`);
