@@ -41,6 +41,25 @@ export default async function WorkerDashboard({ params }: Props) {
 
   const bids = (rawBids ?? []) as unknown as BidRow[];
   const worker = rawWorker as ProfileWorker | null;
+
+  // Fetch matching jobs (worker's categories + city, not yet bid on)
+  const workerCategories = (worker?.categories ?? []) as string[];
+  const workerAreas = (worker?.areas ?? []) as string[];
+  const bidJobIds = new Set(bids.map((b) => b.job?.id).filter(Boolean) as string[]);
+
+  let matchingJobs: Job[] = [];
+  if (workerCategories.length > 0) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let q = (supabase.from('jobs') as any)
+      .select('id, description, category, city, area, budget_min, budget_max, urgent, created_at')
+      .eq('status', 'active')
+      .in('category', workerCategories)
+      .order('created_at', { ascending: false })
+      .limit(6);
+    if (workerAreas.length > 0) q = q.in('city', workerAreas);
+    const { data: rawMatching } = await q;
+    matchingJobs = ((rawMatching ?? []) as Job[]).filter((j) => !bidJobIds.has(j.id));
+  }
   const reviews = (rawReviews ?? []) as unknown as Array<{
     id: string; rating: number; text: string | null; created_at: string;
     author: { name: string | null } | null;
@@ -174,6 +193,68 @@ export default async function WorkerDashboard({ params }: Props) {
               )}
             </div>
           </div>
+
+          {/* Matching jobs — relevant new jobs for this worker */}
+          {matchingJobs.length > 0 && (
+            <section>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-semibold text-base" style={{ color: 'var(--text)' }}>
+                  📌 {locale === 'ru' ? 'Подходящие заявки' : 'Cereri potrivite'} ({matchingJobs.length})
+                </h2>
+                <Link
+                  href={`/${locale}/jobs`}
+                  className="text-xs font-semibold"
+                  style={{ color: 'var(--accent)', textDecoration: 'none' }}
+                >
+                  {locale === 'ru' ? 'Все заявки →' : 'Toate →'}
+                </Link>
+              </div>
+              <div className="flex flex-col gap-3">
+                {matchingJobs.map((job) => {
+                  const cat = job.category as Category;
+                  const ago = (() => {
+                    const h = Math.floor((Date.now() - new Date(job.created_at).getTime()) / 3_600_000);
+                    if (h < 1) return locale === 'ru' ? 'только что' : 'acum';
+                    if (h < 24) return `${h} ${locale === 'ru' ? 'ч' : 'ore'}`;
+                    return `${Math.floor(h / 24)} ${locale === 'ru' ? 'дн' : 'zile'}`;
+                  })();
+                  return (
+                    <div key={job.id} className="card p-4 flex items-start gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap gap-2 items-center mb-1.5">
+                          <Badge variant="category">{CATEGORY_ICONS[cat]} {CATEGORY_LABELS_RU[cat]}</Badge>
+                          {(job as unknown as { urgent?: boolean }).urgent && (
+                            <Badge variant="urgent">⚡ {locale === 'ru' ? 'Срочно' : 'Urgent'}</Badge>
+                          )}
+                          <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{ago} {locale === 'ru' ? 'назад' : 'în urmă'}</span>
+                        </div>
+                        <p className="text-sm line-clamp-2" style={{ color: 'var(--text)', lineHeight: 1.5 }}>
+                          {job.description}
+                        </p>
+                        <div className="flex flex-wrap gap-3 text-xs mt-1.5" style={{ color: 'var(--text-muted)' }}>
+                          <span>📍 {job.city}{job.area ? `, ${job.area}` : ''}</span>
+                          {(job.budget_min || job.budget_max) && (
+                            <span>💰 {job.budget_min && job.budget_max
+                              ? `${job.budget_min}–${job.budget_max} MDL`
+                              : job.budget_min ? `${locale === 'ru' ? 'от' : 'de la'} ${job.budget_min} MDL`
+                              : `${locale === 'ru' ? 'до' : 'până la'} ${job.budget_max} MDL`}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <Link
+                        href={`/${locale}/jobs/${job.id}`}
+                        className="btn-primary shrink-0"
+                        style={{ height: 36, padding: '0 14px', fontSize: 13 }}
+                      >
+                        {locale === 'ru' ? 'Откликнуться' : 'Ofertă'} →
+                      </Link>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          )}
 
           {/* Active jobs (in_progress) */}
           {activeBids.length > 0 && (
