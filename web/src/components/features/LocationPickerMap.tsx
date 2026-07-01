@@ -5,19 +5,21 @@ import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import L, { type LatLng } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
-const CENTER: [number, number] = [47.7617, 27.9297];
-const BOUNDS: [[number, number], [number, number]] = [[47.68, 27.82], [47.83, 28.02]];
+// Moldova center
+const CENTER: [number, number] = [47.4116, 28.3699];
 
-async function reverseGeocode(lat: number, lng: number): Promise<string> {
+async function reverseGeocode(lat: number, lng: number): Promise<{ city: string; area: string }> {
   try {
     const res = await fetch(
       `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=ru`,
     );
     const d = await res.json();
     const a = d.address ?? {};
-    return a.suburb ?? a.neighbourhood ?? a.city_district ?? a.quarter ?? a.county ?? 'Бельцы';
+    const city = a.city ?? a.town ?? a.village ?? a.county ?? '';
+    const area = a.suburb ?? a.neighbourhood ?? a.city_district ?? a.quarter ?? city ?? '';
+    return { city, area };
   } catch {
-    return 'Бельцы';
+    return { city: '', area: '' };
   }
 }
 
@@ -29,7 +31,7 @@ function MapClick({ onPick }: { onPick: (ll: LatLng) => void }) {
 export interface LocationPickerMapProps {
   lat: number | null;
   lng: number | null;
-  onPick: (lat: number, lng: number, area: string) => void;
+  onPick: (lat: number, lng: number, area: string, city: string) => void;
   locale: string;
 }
 
@@ -56,8 +58,8 @@ export default function LocationPickerMap({ lat, lng, onPick, locale }: Location
   });
 
   const handleClick = useCallback(async (ll: LatLng) => {
-    const area = await reverseGeocode(ll.lat, ll.lng);
-    onPick(ll.lat, ll.lng, area);
+    const { city, area } = await reverseGeocode(ll.lat, ll.lng);
+    onPick(ll.lat, ll.lng, area, city);
   }, [onPick]);
 
   const handleGps = () => {
@@ -69,8 +71,8 @@ export default function LocationPickerMap({ lat, lng, onPick, locale }: Location
     setGpsError('');
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
-        const area = await reverseGeocode(pos.coords.latitude, pos.coords.longitude);
-        onPick(pos.coords.latitude, pos.coords.longitude, area);
+        const { city, area } = await reverseGeocode(pos.coords.latitude, pos.coords.longitude);
+        onPick(pos.coords.latitude, pos.coords.longitude, area, city);
         setGpsLoading(false);
       },
       () => {
@@ -92,9 +94,7 @@ export default function LocationPickerMap({ lat, lng, onPick, locale }: Location
       }}>
         <MapContainer
           center={lat !== null && lng !== null ? [lat, lng] : CENTER}
-          zoom={13}
-          maxBounds={BOUNDS}
-          maxBoundsViscosity={0.7}
+          zoom={7}
           style={{ height: 260, width: '100%' }}
         >
           <TileLayer

@@ -3,12 +3,7 @@
 import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { CATEGORY_LABELS_RU, CATEGORY_ICONS, type Category } from '@/lib/mock/data';
-
-const CITIES = ['Бельцы'];
-const AREAS: Record<string, string[]> = {
-  'Бельцы': ['Центр', 'Северная', 'Южная', 'Молодёжная', 'Флора', 'Пэмынтень', 'Весь город'],
-};
+import { CATEGORY_LABELS_RU, CATEGORY_ICONS, CITIES, AREAS, type Category } from '@/lib/mock/data';
 const ALL_CATEGORIES = Object.keys(CATEGORY_LABELS_RU) as Category[];
 
 type Role = 'client' | 'worker';
@@ -28,7 +23,7 @@ interface State {
 export default function OnboardingWizard({ locale, userId }: { locale: string; userId: string }) {
   const [step, setStep] = useState<Step>(1);
   const [state, setState] = useState<State>({
-    name: '', role: null, categories: [], city: 'Бельцы', areas: [], bio: '', experienceYrs: '', docFile: null,
+    name: '', role: null, categories: [], city: CITIES[0], areas: [], bio: '', experienceYrs: '', docFile: null,
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');

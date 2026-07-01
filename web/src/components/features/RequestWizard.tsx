@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { CATEGORY_LABELS_RU, CATEGORY_ICONS, type Category } from '@/lib/mock/data';
+import { CATEGORY_LABELS_RU, CATEGORY_ICONS, CITIES, type Category } from '@/lib/mock/data';
 import { createJob } from '@/app/actions/createJob';
 import LocationPicker from './LocationPicker';
 import PhotoUpload from './PhotoUpload';
@@ -16,6 +16,7 @@ interface FormData {
   photos: string[];
   lat: number | null;
   lng: number | null;
+  city: string;
   area: string;
   budget: string;
 }
@@ -28,6 +29,7 @@ const INITIAL: FormData = {
   photos: [],
   lat: null,
   lng: null,
+  city: CITIES[0],
   area: '',
   budget: '',
 };
@@ -51,8 +53,8 @@ export default function RequestWizard({ locale }: Props) {
     if (step === 0 && !form.category) e.category = locale === 'ru' ? 'Выберите категорию' : 'Alegeți categoria';
     if (step === 1 && form.description.trim().length < 20)
       e.description = locale === 'ru' ? 'Минимум 20 символов' : 'Minim 20 caractere';
-    if (step === 2 && form.lat === null)
-      e.lat = locale === 'ru' ? 'Отметьте место на карте' : 'Marcați locul pe hartă';
+    if (step === 2 && !form.city)
+      e.lat = locale === 'ru' ? 'Выберите город' : 'Alegeți orașul';
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -74,10 +76,10 @@ export default function RequestWizard({ locale }: Props) {
       await createJob({
         category: form.category as string,
         description: form.description,
-        city: 'Бельцы',
-        area: form.area || 'Бельцы',
-        lat: form.lat!,
-        lng: form.lng!,
+        city: form.city || CITIES[0],
+        area: form.area || form.city || CITIES[0],
+        lat: form.lat ?? 0,
+        lng: form.lng ?? 0,
         budget: form.budget,
         urgent: form.urgent,
         needsQuote: form.needsQuote,
@@ -260,31 +262,42 @@ function Step3Location({ form, set, errors, locale }: StepProps) {
         <h2 className="font-semibold text-lg" style={{ color: 'var(--text)' }}>
           {locale === 'ru' ? 'Где нужна работа?' : 'Unde este nevoie de lucru?'}
         </h2>
-        <div className="flex items-center gap-2 mt-1">
-          <span
-            className="text-xs font-semibold px-2 py-0.5 rounded-full"
-            style={{ background: 'var(--accent-dim)', color: 'var(--accent)' }}
-          >
-            📍 Бельцы
-          </span>
-          {form.area && (
-            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-              · {form.area}
-            </span>
-          )}
-        </div>
       </div>
 
-      <LocationPicker
-        lat={form.lat}
-        lng={form.lng}
-        locale={locale}
-        onPick={(lat, lng, area) => {
-          set('lat', lat);
-          set('lng', lng);
-          set('area', area);
-        }}
-      />
+      {/* City selector */}
+      <div>
+        <label className="field-label">{locale === 'ru' ? 'Город *' : 'Oraș *'}</label>
+        <select
+          className="field-input"
+          value={form.city}
+          onChange={(e) => { set('city', e.target.value); set('area', ''); set('lat', null); set('lng', null); }}
+        >
+          {CITIES.map((c) => <option key={c} value={c}>{c}</option>)}
+        </select>
+      </div>
+
+      {/* Map to pin exact location */}
+      <div>
+        <label className="field-label" style={{ marginBottom: 6 }}>
+          {locale === 'ru' ? 'Точное место (необязательно)' : 'Locul exact (opțional)'}
+        </label>
+        <LocationPicker
+          lat={form.lat}
+          lng={form.lng}
+          locale={locale}
+          onPick={(lat, lng, area, city) => {
+            set('lat', lat);
+            set('lng', lng);
+            set('area', area);
+            if (city) set('city', city);
+          }}
+        />
+        {form.area && (
+          <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+            📍 {form.city}{form.area && form.area !== form.city ? `, ${form.area}` : ''}
+          </p>
+        )}
+      </div>
       {errors.lat && <FieldError>{errors.lat}</FieldError>}
 
       <div>
