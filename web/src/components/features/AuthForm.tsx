@@ -3,13 +3,12 @@
 import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { CATEGORY_LABELS_RU, CATEGORY_ICONS, type Category } from '@/lib/mock/data';
+import { CATEGORY_LABELS_RU, CATEGORY_LABELS_RO, CATEGORY_ICONS, CITIES, AREAS as CITY_AREAS, type Category } from '@/lib/mock/data';
 
 type Screen = 'phone' | 'otp' | 'name' | 'role' | 'worker-cats' | 'worker-area' | 'success';
 type Role = 'client' | 'worker';
 
 const ALL_CATEGORIES = Object.keys(CATEGORY_LABELS_RU) as Category[];
-const AREAS = ['Центр', 'Северная', 'Южная', 'Молодёжная', 'Флора', 'Пэмынтень', 'Весь город'];
 
 export default function AuthForm({ locale, next }: { locale: string; next?: string }) {
   const [screen, setScreen] = useState<Screen>('phone');
@@ -18,6 +17,7 @@ export default function AuthForm({ locale, next }: { locale: string; next?: stri
   const [name, setName]     = useState('');
   const [role, setRole]     = useState<Role | null>(null);
   const [cats, setCats]     = useState<Category[]>([]);
+  const [city, setCity]     = useState<string>(CITIES[0]);
   const [areas, setAreas]   = useState<string[]>([]);
   const [bio, setBio]       = useState('');
   const [expYrs, setExpYrs] = useState('');
@@ -66,8 +66,13 @@ export default function AuthForm({ locale, next }: { locale: string; next?: stri
     setUserId(uid);
 
     // Check if profile is complete
-    const { data: existing } = await supabase
-      .from('profiles').select('id, name, role').eq('id', uid).single();
+    const { data: existing, error: readError } = await supabase
+      .from('profiles').select('id, name, role').eq('id', uid).maybeSingle();
+    if (readError) {
+      setError(locale === 'ru' ? 'Не удалось загрузить профиль. Повторите попытку.' : 'Profilul nu a putut fi încărcat. Reîncercați.');
+      setLoading(false);
+      return;
+    }
 
     const profile = existing as { id: string; name?: string; role?: string } | null;
 
@@ -81,11 +86,16 @@ export default function AuthForm({ locale, next }: { locale: string; next?: stri
       // New user — start registration flow
       if (!profile) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (supabase.from('profiles') as any).insert({
+        const { error: insertError } = await (supabase.from('profiles') as any).insert({
           id: uid,
           phone: data.user?.phone ?? fullPhone,
           role: 'client',
         });
+        if (insertError && insertError.code !== '23505') {
+          setError(locale === 'ru' ? 'Не удалось создать профиль. Повторите попытку.' : 'Profilul nu a putut fi creat. Reîncercați.');
+          setLoading(false);
+          return;
+        }
       }
       setLoading(false);
       setScreen('name');
@@ -131,7 +141,7 @@ export default function AuthForm({ locale, next }: { locale: string; next?: stri
     setError('');
     const supabase = createClient();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: profileErr } = await (supabase.from('profiles') as any).update({ name: name.trim(), role: 'worker', city: 'Бельцы' }).eq('id', userId);
+    const { error: profileErr } = await (supabase.from('profiles') as any).update({ name: name.trim(), role: 'worker', city }).eq('id', userId);
     if (profileErr) { setError(profileErr.message); setLoading(false); return; }
     // IMPORTANT: do NOT include system fields (is_pro, verified, bid_credits,
     // rating_avg, rating_count) — managed by DB triggers/admin, not here.
@@ -366,7 +376,7 @@ export default function AuthForm({ locale, next }: { locale: string; next?: stri
                     fontWeight: active ? 600 : 400,
                   }}>
                   <span>{CATEGORY_ICONS[cat]}</span>
-                  <span>{CATEGORY_LABELS_RU[cat]}</span>
+                  <span>{(locale === 'ro' ? CATEGORY_LABELS_RO : CATEGORY_LABELS_RU)[cat]}</span>
                 </button>
               );
             })}
@@ -391,14 +401,19 @@ export default function AuthForm({ locale, next }: { locale: string; next?: stri
           </div>
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
-              <label className="field-label">{locale === 'ru' ? 'Опыт работы (лет)' : 'Experiență (ani)'}</label>
-              <input type="number" min={0} max={60} className="field-input" placeholder="5"
-                value={expYrs} onChange={(e) => setExpYrs(e.target.value)} />
+              <label className="field-label">{locale === 'ru' ? 'Город работы *' : 'Orașul de lucru *'}</label>
+              <select
+                className="field-input"
+                value={city}
+                onChange={(e) => { setCity(e.target.value); setAreas([]); }}
+              >
+                {CITIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="field-label">{locale === 'ru' ? 'Районы Бельц' : 'Zonele din Bălți'}</label>
+              <label className="field-label">{locale === 'ru' ? 'Районы (необязательно)' : 'Zone (opțional)'}</label>
               <div className="flex flex-wrap gap-1.5">
-                {AREAS.map((area) => {
+                {(CITY_AREAS[city] ?? ['Центр', 'Весь город']).map((area) => {
                   const active = areas.includes(area);
                   return (
                     <button key={area} onClick={() => toggleArea(area)}
@@ -414,6 +429,11 @@ export default function AuthForm({ locale, next }: { locale: string; next?: stri
                   );
                 })}
               </div>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="field-label">{locale === 'ru' ? 'Опыт работы (лет)' : 'Experiență (ani)'}</label>
+              <input type="number" min={0} max={60} className="field-input" placeholder="5"
+                value={expYrs} onChange={(e) => setExpYrs(e.target.value)} />
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="field-label">

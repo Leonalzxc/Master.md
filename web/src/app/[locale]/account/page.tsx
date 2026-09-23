@@ -4,7 +4,7 @@ import Link from 'next/link';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import { createClient } from '@/lib/supabase/server';
-import type { Profile } from '@/lib/supabase/types';
+import { ensureMyProfile } from '@/lib/supabase/ensure-profile';
 
 type Props = { params: Promise<{ locale: string }> };
 
@@ -20,20 +20,7 @@ export default async function AccountPage({ params }: Props) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect(`/${locale}/auth`);
 
-  let { data: rawProfile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
-  if (!rawProfile) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase as any).from('profiles').upsert({
-      id: user.id,
-      phone: user.phone ?? user.email ?? '',
-      role: 'client',
-    });
-    const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single();
-    rawProfile = data;
-  }
-  const profile = rawProfile as Profile | null;
-
-  if (!profile) redirect(`/${locale}/auth`);
+  const profile = await ensureMyProfile(supabase, user);
   if (!profile.name) redirect(`/${locale}/onboarding`);
 
   const isWorker = profile.role === 'worker';
@@ -84,8 +71,9 @@ export default async function AccountPage({ params }: Props) {
 
         <div className="container" style={{ paddingTop: 28 }}>
 
-          {/* Main actions */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+          {/* Main actions — role-appropriate */}
+          <div className={`grid grid-cols-1 ${isWorker ? 'sm:grid-cols-2' : ''} gap-4 mb-6`}>
+            {/* Clients always see their jobs */}
             <Link href={`/${locale}/account/client`} className="card p-6 flex items-start gap-4 hover-lift" style={{ textDecoration: 'none' }}>
               <div className="text-3xl shrink-0">📋</div>
               <div>
@@ -101,27 +89,32 @@ export default async function AccountPage({ params }: Props) {
               </div>
             </Link>
 
-            <Link href={`/${locale}/account/worker`} className="card p-6 flex items-start gap-4 hover-lift" style={{ textDecoration: 'none' }}>
-              <div className="text-3xl shrink-0">🔨</div>
-              <div>
-                <div className="font-semibold text-base" style={{ color: 'var(--text)' }}>
-                  {t('Мои заказы', 'Comenzile mele')}
+            {/* Workers also see their bids dashboard */}
+            {isWorker && (
+              <Link href={`/${locale}/account/worker`} className="card p-6 flex items-start gap-4 hover-lift" style={{ textDecoration: 'none' }}>
+                <div className="text-3xl shrink-0">🔨</div>
+                <div>
+                  <div className="font-semibold text-base" style={{ color: 'var(--text)' }}>
+                    {t('Мои заказы', 'Comenzile mele')}
+                  </div>
+                  <div className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
+                    {t('Откликайтесь на заявки и выполняйте заказы', 'Trimiteți oferte și executați comenzi')}
+                  </div>
+                  <span className="inline-flex items-center gap-1 text-xs font-semibold mt-2" style={{ color: 'var(--accent)' }}>
+                    {t('Открыть', 'Deschide')} →
+                  </span>
                 </div>
-                <div className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
-                  {t('Откликайтесь на заявки и выполняйте заказы', 'Trimiteți oferte și executați comenzi')}
-                </div>
-                <span className="inline-flex items-center gap-1 text-xs font-semibold mt-2" style={{ color: 'var(--accent)' }}>
-                  {t('Открыть', 'Deschide')} →
-                </span>
-              </div>
-            </Link>
+              </Link>
+            )}
           </div>
 
           {/* Quick links */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[
-              { href: `/${locale}/request/new`,  icon: '➕', label: t('Новая заявка', 'Cerere nouă') },
-              { href: `/${locale}/jobs`,          icon: '📌', label: t('Все заявки', 'Toate cererile') },
+              isWorker
+                ? { href: `/${locale}/jobs`, icon: '📌', label: t('Найти заказ', 'Găsește comandă') }
+                : { href: `/${locale}/request/new`, icon: '➕', label: t('Новая заявка', 'Cerere nouă') },
+              { href: `/${locale}/jobs`,          icon: '📋', label: t('Все заявки', 'Toate cererile') },
               { href: `/${locale}/workers`,       icon: '👷', label: t('Мастера', 'Meșteri') },
               { href: `/${locale}/account/profile`, icon: '👤', label: t('Профиль', 'Profil') },
             ].map(({ href, icon, label }) => (

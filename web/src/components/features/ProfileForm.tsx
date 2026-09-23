@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { CATEGORY_LABELS_RU, CATEGORY_ICONS, CITIES, AREAS, type Category } from '@/lib/mock/data';
+import { CATEGORY_LABELS_RU, CATEGORY_LABELS_RO, CATEGORY_ICONS, CITIES, AREAS, type Category } from '@/lib/mock/data';
 import { updateProfile } from '@/app/actions/updateProfile';
 import PhotoUpload from '@/components/features/PhotoUpload';
 import type { Profile, ProfileWorker } from '@/lib/supabase/types';
@@ -179,7 +179,7 @@ export default function ProfileForm({ locale, profile, workerProfile, telegramCo
               {t('Выберите категории, в которых вы работаете', 'Selectați categoriile în care lucrați')}
             </p>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {(Object.entries(CATEGORY_LABELS_RU) as [Category, string][]).map(([cat, label]) => {
+              {(Object.entries(locale === 'ro' ? CATEGORY_LABELS_RO : CATEGORY_LABELS_RU) as [Category, string][]).map(([cat, label]) => {
                 const active = categories.includes(cat);
                 return (
                   <button

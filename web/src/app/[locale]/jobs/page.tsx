@@ -4,7 +4,7 @@ import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import EmptyState from '@/components/ui/EmptyState';
 import { createClient } from '@/lib/supabase/server';
-import { CITIES, CATEGORY_LABELS_RU, CATEGORY_ICONS, type Category } from '@/lib/mock/data';
+import { CITIES, CATEGORY_LABELS_RU, CATEGORY_LABELS_RO, CATEGORY_ICONS, type Category } from '@/lib/mock/data';
 import Badge from '@/components/ui/Badge';
 import type { Job } from '@/lib/supabase/types';
 
@@ -223,7 +223,7 @@ export default async function JobsPage({ params, searchParams }: Props) {
 function JobCard({ job, locale }: { job: JobWithBids; locale: string }) {
   const cat = job.category as Category;
   const icon = CATEGORY_ICONS[cat] ?? '🔧';
-  const label = CATEGORY_LABELS_RU[cat] ?? cat;
+  const label = (locale === 'ro' ? CATEGORY_LABELS_RO : CATEGORY_LABELS_RU)[cat] ?? cat;
   const bidsCount = Array.isArray(job.bid_count) ? (job.bid_count[0] as { count: number })?.count ?? 0 : 0;
 
   const ago = (() => {
@@ -250,7 +250,7 @@ function JobCard({ job, locale }: { job: JobWithBids; locale: string }) {
       </p>
 
       <div className="flex flex-wrap gap-3 text-xs" style={{ color: 'var(--text-muted)' }}>
-        <span>📍 {job.city}, {job.area}</span>
+        <span>📍 {job.city}{job.area && job.area !== job.city ? `, ${job.area}` : ''}</span>
         {(job.budget_min || job.budget_max) && (
           <span>💰 {job.budget_min && job.budget_max
             ? `${job.budget_min}–${job.budget_max} MDL`
@@ -290,7 +290,7 @@ function buildHref(locale: string, params: { city?: string; category?: string; q
 function FilterPanel({ locale, selectedCity, selectedCategory, q, sort }: {
   locale: string; selectedCity?: string; selectedCategory?: Category; q?: string; sort?: string;
 }) {
-  const categories = Object.entries(CATEGORY_LABELS_RU) as [Category, string][];
+  const categories = Object.entries(locale === 'ro' ? CATEGORY_LABELS_RO : CATEGORY_LABELS_RU) as [Category, string][];
   return (
     <div className="card p-4 flex flex-col gap-5 sticky top-24">
       <div>

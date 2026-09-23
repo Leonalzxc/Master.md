@@ -1,7 +1,7 @@
 import type { MetadataRoute } from 'next';
 import { createClient } from '@/lib/supabase/server';
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://master.md';
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://master-md.vercel.app';
 const LOCALES = ['ru', 'ro'] as const;
 
 function url(path: string): MetadataRoute.Sitemap[number] {
@@ -14,6 +14,7 @@ function url(path: string): MetadataRoute.Sitemap[number] {
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  // Sitemap is public data; it must never bypass RLS or require the admin key.
   const supabase = await createClient();
 
   // Static pages per locale

@@ -25,7 +25,7 @@ export async function updateProfile(data: {
   // Save base profile including new role
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error: profileError } = await (supabase.from('profiles') as any)
-    .update({ name: data.name.trim(), city: data.city || 'Бельцы', role: data.role })
+    .update({ name: data.name.trim(), city: data.city || null, role: data.role })
     .eq('id', user.id);
   if (profileError) throw new Error(profileError.message);
 

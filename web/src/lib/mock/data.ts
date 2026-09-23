@@ -190,10 +190,16 @@ export const MOCK_WORKERS: Worker[] = [
   },
 ];
 
-export const CITIES = ['Бельцы'];
+export const CITIES = [
+  'Бельцы', 'Кишинёв', 'Кагул', 'Унгень', 'Сороки', 'Орхей',
+  'Хынчешты', 'Яловень', 'Страшень', 'Флорешты', 'Дрокия',
+  'Эдинец', 'Рышканы', 'Теленешты', 'Криулень', 'Чимишлия',
+  'Новые Анены', 'Калараш', 'Леова', 'Тараклия',
+];
 
 export const AREAS: Record<string, string[]> = {
   'Бельцы': ['Центр', 'Северная', 'Южная', 'Молодёжная', 'Флора', 'Пэмынтень'],
+  'Кишинёв': ['Центр', 'Ботаника', 'Буюканы', 'Чеканы', 'Рышкановка', 'Телецентр', 'Скулянка'],
 };
 
 export const CATEGORY_LABELS_RU: Record<Category, string> = {
@@ -205,6 +211,17 @@ export const CATEGORY_LABELS_RU: Record<Category, string> = {
   minorRepairs: 'Мелкий ремонт',
   furniture: 'Сборка мебели',
   painting: 'Покраска',
+};
+
+export const CATEGORY_LABELS_RO: Record<Category, string> = {
+  electric: 'Electricitate',
+  plumbing: 'Instalații sanitare',
+  finishing: 'Finisaje',
+  roofing: 'Acoperișuri',
+  tiling: 'Plăci ceramice',
+  minorRepairs: 'Reparații minore',
+  furniture: 'Montaj mobilă',
+  painting: 'Vopsitorie',
 };
 
 export const CATEGORY_ICONS: Record<Category, string> = {

@@ -9,7 +9,8 @@ import BidForm from '@/components/features/BidForm';
 import SelectWorkerButton from '@/components/features/SelectWorkerButton';
 import CancelJobButton from '@/components/features/CancelJobButton';
 import { createClient } from '@/lib/supabase/server';
-import { CATEGORY_LABELS_RU, CATEGORY_ICONS, type Category } from '@/lib/mock/data';
+import { getJobClientContact } from '@/lib/supabase/profiles';
+import { CATEGORY_LABELS_RU, CATEGORY_LABELS_RO, CATEGORY_ICONS, type Category } from '@/lib/mock/data';
 import type { Job, Bid, Profile, ProfileWorker } from '@/lib/supabase/types';
 
 type Props = { params: Promise<{ locale: string; id: string }> };
@@ -29,7 +30,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const job = data as Job | null;
   if (!job) return { title: locale === 'ru' ? 'Заявка не найдена' : 'Cerere negăsită' };
 
-  const cat = CATEGORY_LABELS_RU[job.category as Category];
+  const catLabels = locale === 'ro' ? CATEGORY_LABELS_RO : CATEGORY_LABELS_RU;
+  const cat = catLabels[job.category as Category];
   const title = `${cat} — ${job.city}, ${job.area}`;
   const description = job.description.slice(0, 155) + (job.description.length > 155 ? '…' : '');
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://master.md';
@@ -69,7 +71,7 @@ export default async function JobDetailPage({ params }: Props) {
   const selectedWorkerId = jobAny.selected_worker_id;
   const isSelectedWorker = !!(user && selectedWorkerId && selectedWorkerId === user.id);
 
-  const [{ data: rawBids }, { data: rawWorkerContacts }, { data: rawClientProfile }] = await Promise.all([
+  const [{ data: rawBids }, { data: rawWorkerContacts }, clientProfile] = await Promise.all([
     supabase
       .from('bids')
       .select('*, worker:profiles(id, name, profiles_worker(is_pro, verified, rating_avg, rating_count))')
@@ -81,14 +83,12 @@ export default async function JobDetailPage({ params }: Props) {
       : Promise.resolve({ data: null }),
     // Selected worker sees client's phone when in_progress
     isSelectedWorker && job.status === 'in_progress'
-      ? supabase.from('profiles').select('name, phone').eq('id', jobAny.client_id).single()
-      : Promise.resolve({ data: null }),
+      ? getJobClientContact(supabase, id)
+      : Promise.resolve(null),
   ]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const workerContacts = rawWorkerContacts as any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const clientProfile = rawClientProfile as any;
 
   const bids = ((rawBids ?? []) as BidRow[]).sort((a, b) => {
     if (a.status === 'selected') return -1;
@@ -119,7 +119,7 @@ export default async function JobDetailPage({ params }: Props) {
               <div>
                 <div className="flex flex-wrap gap-2 mb-2">
                   <Badge variant="category">
-                    {CATEGORY_ICONS[job.category as Category]} {CATEGORY_LABELS_RU[job.category as Category]}
+                    {CATEGORY_ICONS[job.category as Category]} {(locale === 'ro' ? CATEGORY_LABELS_RO : CATEGORY_LABELS_RU)[job.category as Category]}
                   </Badge>
                   {job.urgent && <Badge variant="urgent">⚡ Срочно</Badge>}
                   {job.needs_quote && <Badge variant="muted">📋 Нужна смета</Badge>}
@@ -132,7 +132,7 @@ export default async function JobDetailPage({ params }: Props) {
                   {job.description.length > 80 ? job.description.slice(0, 80) + '…' : job.description}
                 </h1>
                 <div className="flex flex-wrap gap-4 mt-2 text-sm" style={{ color: 'var(--text-muted)' }}>
-                  <span>📍 {job.city}, {job.area}</span>
+                  <span>📍 {job.city}{job.area && job.area !== job.city ? `, ${job.area}` : ''}</span>
                   <span>📅 {publishedDate}</span>
                   <span>💬 {bids.length} {bidsLabel(bids.length)}</span>
                 </div>

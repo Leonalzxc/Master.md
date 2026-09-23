@@ -7,7 +7,7 @@ import Badge from '@/components/ui/Badge';
 import EmptyState from '@/components/ui/EmptyState';
 import CancelJobButton from '@/components/features/CancelJobButton';
 import { createClient } from '@/lib/supabase/server';
-import { CATEGORY_LABELS_RU, CATEGORY_ICONS, type Category } from '@/lib/mock/data';
+import { CATEGORY_LABELS_RU, CATEGORY_LABELS_RO, CATEGORY_ICONS, type Category } from '@/lib/mock/data';
 import type { Job } from '@/lib/supabase/types';
 
 type Props = { params: Promise<{ locale: string }>; searchParams: Promise<{ reviewed?: string }> };
@@ -107,7 +107,7 @@ export default async function ClientDashboard({ params, searchParams }: Props) {
                     {/* Left */}
                     <div className="flex-1 min-w-0 flex flex-col gap-2">
                       <div className="flex flex-wrap items-center gap-2">
-                        <Badge variant="category">{CATEGORY_ICONS[cat]} {CATEGORY_LABELS_RU[cat]}</Badge>
+                        <Badge variant="category">{CATEGORY_ICONS[cat]} {(locale === 'ro' ? CATEGORY_LABELS_RO : CATEGORY_LABELS_RU)[cat]}</Badge>
                         {job.urgent && <Badge variant="urgent">⚡</Badge>}
                         <span className="text-xs font-semibold" style={{ color: st.color }}>● {locale === 'ru' ? st.ru : st.ro}</span>
                       </div>
@@ -115,7 +115,7 @@ export default async function ClientDashboard({ params, searchParams }: Props) {
                         {job.description}
                       </p>
                       <div className="flex flex-wrap gap-3 text-xs" style={{ color: 'var(--text-muted)' }}>
-                        <span>📍 {job.city}, {job.area}</span>
+                        <span>📍 {job.city}{job.area && job.area !== job.city ? `, ${job.area}` : ''}</span>
                         <span>🕐 {ago}</span>
                         {bidCount > 0 && (
                           <span style={{ color: job.status === 'active' ? 'var(--accent)' : undefined }}>

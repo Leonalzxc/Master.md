@@ -4,6 +4,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
+import { createClient } from '@/lib/supabase/server';
 
 export async function generateMetadata({
   params,
@@ -29,22 +30,59 @@ const CATEGORIES = [
   { slug: 'painting',     icon: '🖌️', color: '#c4b5fd' },
 ] as const;
 
-const STATS = [
-  { value: '500+', labelRu: 'мастеров', labelRo: 'meșteri' },
-  { value: '15 мин', labelRu: 'до первого отклика', labelRo: 'primul răspuns' },
-  { value: '4.9★', labelRu: 'средний рейтинг', labelRo: 'rating mediu' },
-];
-
 type Props = { params: Promise<{ locale: string }> };
 
 export default async function HomePage({ params }: Props) {
   const { locale } = await params;
+
+  // Fetch real stats — non-blocking, fallback to '—' on error
+  let workerCount: number | null = null;
+  let activeJobCount: number | null = null;
+  let avgRating: string | null = null;
+
+  try {
+    const supabase = await createClient();
+    const [wRes, jRes, rRes] = await Promise.all([
+      supabase.from('profiles_worker').select('id', { count: 'exact', head: true }),
+      supabase.from('jobs').select('id', { count: 'exact', head: true }).eq('status', 'active'),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (supabase.from('profiles_worker') as any).select('rating_avg').gt('rating_count', 0),
+    ]);
+    workerCount = wRes.count;
+    activeJobCount = jRes.count;
+    const rows = ((rRes.data ?? []) as { rating_avg: number }[]);
+    if (rows.length > 0) {
+      const sum = rows.reduce((s, r) => s + r.rating_avg, 0);
+      avgRating = (sum / rows.length).toFixed(1);
+    }
+  } catch {
+    // Stats are non-critical; page renders with placeholders
+  }
+
+  const stats = [
+    {
+      value: workerCount ? `${workerCount}` : '—',
+      labelRu: 'мастеров на платформе',
+      labelRo: 'meșteri pe platformă',
+    },
+    {
+      value: activeJobCount ? `${activeJobCount}` : '—',
+      labelRu: 'активных заявок',
+      labelRo: 'cereri active',
+    },
+    {
+      value: avgRating ? `${avgRating}★` : '—',
+      labelRu: 'средний рейтинг',
+      labelRo: 'rating mediu',
+    },
+  ];
+
   return (
     <>
       <Header />
       <main className="flex-1">
         <HeroSection locale={locale} />
-        <StatsBar locale={locale} />
+        <StatsBar locale={locale} stats={stats} />
         <HowItWorksSection />
         <CategoriesSection locale={locale} />
         <TrustSection />
@@ -100,7 +138,7 @@ function HeroSection({ locale }: { locale: string }) {
               }}
             >
               <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#38bdf8', display: 'inline-block' }} />
-              {locale === 'ru' ? 'Бельцы, Молдова' : 'Bălți, Moldova'}
+              {locale === 'ru' ? 'По всей Молдове' : 'În toată Moldova'}
             </div>
 
             <h1
@@ -236,7 +274,7 @@ function HeroSection({ locale }: { locale: string }) {
 }
 
 /* ── Stats bar ───────────────────────────────────────────────────── */
-function StatsBar({ locale }: { locale: string }) {
+function StatsBar({ locale, stats }: { locale: string; stats: { value: string; labelRu: string; labelRo: string }[] }) {
   return (
     <div
       style={{
@@ -248,17 +286,17 @@ function StatsBar({ locale }: { locale: string }) {
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: `repeat(${STATS.length}, 1fr)`,
+            gridTemplateColumns: `repeat(${stats.length}, 1fr)`,
             gap: 0,
           }}
         >
-          {STATS.map((s, i) => (
+          {stats.map((s, i) => (
             <div
               key={i}
               style={{
                 padding: '20px 16px',
                 textAlign: 'center',
-                borderRight: i < STATS.length - 1 ? '1px solid var(--glass-border)' : 'none',
+                borderRight: i < stats.length - 1 ? '1px solid var(--glass-border)' : 'none',
               }}
             >
               <div

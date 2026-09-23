@@ -6,12 +6,13 @@ import Footer from '@/components/layout/Footer';
 import Badge from '@/components/ui/Badge';
 import RatingStars from '@/components/ui/RatingStars';
 import { createClient } from '@/lib/supabase/server';
-import { CATEGORY_LABELS_RU, CATEGORY_ICONS, type Category } from '@/lib/mock/data';
+import { PUBLIC_PROFILE_COLUMNS, type PublicProfile } from '@/lib/supabase/profiles';
+import { CATEGORY_LABELS_RU, CATEGORY_LABELS_RO, CATEGORY_ICONS, type Category } from '@/lib/mock/data';
 import type { Profile, ProfileWorker, Review, Job } from '@/lib/supabase/types';
 
 type Props = { params: Promise<{ locale: string; id: string }> };
 
-type WorkerRow = Profile & { profiles_worker: ProfileWorker | null };
+type WorkerRow = PublicProfile & { profiles_worker: ProfileWorker | null };
 type ReviewRow = Review & {
   author: Pick<Profile, 'name'> | null;
   job: Pick<Job, 'category'> | null;
@@ -21,7 +22,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale, id } = await params;
   const supabase = await createClient();
   const { data: wr } = await supabase
-    .from('profiles').select('*, profiles_worker(bio, categories, rating_avg, rating_count)').eq('id', id).single();
+    .from('profiles').select(`${PUBLIC_PROFILE_COLUMNS},profiles_worker(bio,categories,rating_avg,rating_count)`).eq('id', id).single();
   const w = wr as unknown as { name: string | null; city: string | null; profiles_worker: { bio?: string | null; rating_avg?: number } | null } | null;
   if (!w) return { title: locale === 'ru' ? 'Мастер не найден' : 'Meșter negăsit' };
 
@@ -52,7 +53,7 @@ export default async function WorkerProfilePage({ params }: Props) {
   const supabase = await createClient();
 
   const { data: wr, error } = await supabase
-    .from('profiles').select('*, profiles_worker(*)').eq('id', id).single();
+    .from('profiles').select(`${PUBLIC_PROFILE_COLUMNS},profiles_worker(*)`).eq('id', id).single();
   if (error || !wr) notFound();
   const worker = wr as unknown as WorkerRow;
   const pw = worker.profiles_worker;
@@ -111,7 +112,7 @@ export default async function WorkerProfilePage({ params }: Props) {
                 <div className="flex flex-wrap gap-2 mb-4">
                   {(pw.categories as Category[]).map((cat) => (
                     <Badge key={cat} variant="category">
-                      {CATEGORY_ICONS[cat]} {CATEGORY_LABELS_RU[cat]}
+                      {CATEGORY_ICONS[cat]} {(locale === 'ru' ? CATEGORY_LABELS_RU : CATEGORY_LABELS_RO)[cat]}
                     </Badge>
                   ))}
                 </div>
@@ -185,7 +186,7 @@ export default async function WorkerProfilePage({ params }: Props) {
                 ) : (
                   <div className="flex flex-col gap-4">
                     {reviews.map((r) => (
-                      <ReviewCard key={r.id} review={r} />
+                      <ReviewCard key={r.id} review={r} locale={locale} />
                     ))}
                   </div>
                 )}
@@ -245,9 +246,11 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-function ReviewCard({ review }: { review: ReviewRow }) {
-  const date = new Date(review.created_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+function ReviewCard({ review, locale }: { review: ReviewRow; locale: string }) {
+  const dateLocale = locale === 'ro' ? 'ro-RO' : 'ru-RU';
+  const date = new Date(review.created_at).toLocaleDateString(dateLocale, { day: 'numeric', month: 'long', year: 'numeric' });
   const cat = review.job?.category as Category | undefined;
+  const catLabels = locale === 'ro' ? CATEGORY_LABELS_RO : CATEGORY_LABELS_RU;
   return (
     <div
       className="rounded-xl p-4 flex flex-col gap-2"
@@ -255,7 +258,7 @@ function ReviewCard({ review }: { review: ReviewRow }) {
     >
       <div className="flex items-center justify-between">
         <span className="font-medium text-sm" style={{ color: 'var(--text)' }}>
-          {review.author?.name ?? 'Клиент'}
+          {review.author?.name ?? (locale === 'ro' ? 'Client' : 'Клиент')}
         </span>
         <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{date}</span>
       </div>
@@ -267,7 +270,7 @@ function ReviewCard({ review }: { review: ReviewRow }) {
       )}
       {cat && (
         <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-          {CATEGORY_ICONS[cat]} {CATEGORY_LABELS_RU[cat]}
+          {CATEGORY_ICONS[cat]} {catLabels[cat]}
         </span>
       )}
     </div>

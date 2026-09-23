@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { sendTelegramMessage } from '@/lib/telegram';
 
 export async function createBid(input: {
@@ -53,7 +54,7 @@ export async function createBid(input: {
 
     if (jobData) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: ownerData } = await supabase
+      const { data: ownerData } = await createAdminClient()
         .from('profiles')
         .select('telegram_chat_id, name')
         .eq('id', (jobData as any).client_id)
@@ -71,7 +72,7 @@ export async function createBid(input: {
 
         await sendTelegramMessage({
           chatId: owner.telegram_chat_id,
-          text: `💬 <b>Новый отклик на вашу заявку</b>\n\n👷 Мастер: <b>${workerName}</b>${input.price ? `\n💰 Цена: ${input.price} MDL` : ''}\n\n<a href="${siteUrl}/ru/jobs/${input.jobId}">Посмотреть отклики →</a>`,
+          text: `💬 <b>Новый отклик на вашу заявку</b>\n\n👷 Мастер: <b>${workerName}</b>${input.price ? `\n💰 Цена: ${input.price} MDL` : ''}\n\n<a href="${siteUrl}/${input.locale}/jobs/${input.jobId}">Посмотреть отклики →</a>`,
         });
       }
     }

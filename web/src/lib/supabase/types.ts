@@ -36,6 +36,7 @@ export type ProfileWorker = {
   is_pro: boolean;
   verified: boolean;
   bid_credits: number;
+  verification_submitted_at: string | null;
   rating_avg: number;
   rating_count: number;
   portfolio: string[];
@@ -65,7 +66,6 @@ export type JobStatus = (typeof JOB_STATUSES)[number];
 export type Job = {
   id: string;
   client_id: string;
-  title: string;
   description: string;
   category: string;
   city: string | null;
@@ -249,7 +249,7 @@ export interface Database {
       };
       jobs: {
         Row: Job;
-        Insert: Partial<Job> & { client_id: string; title: string; description: string; category: string };
+        Insert: Partial<Job> & { client_id: string; description: string; category: string };
         Update: Partial<Job>;
       };
       bids: {
@@ -280,6 +280,14 @@ export interface Database {
     };
     Views: Record<string, never>;
     Functions: {
+      get_my_profile: {
+        Args: Record<string, never>;
+        Returns: Profile[];
+      };
+      get_job_client_contact: {
+        Args: { p_job_id: string };
+        Returns: { name: string | null; phone: string }[];
+      };
       create_notification: {
         Args: {
           p_user_id: string;

@@ -26,7 +26,7 @@ export const metadata: Metadata = {
     template: '%s | MASTER Moldova',
     default: 'MASTER — Найдите мастера в Молдове',
   },
-  description: 'Биржа мастеров для ремонта и строительства в Бельцах и Молдове. Опубликуйте заявку и получите отклики за 15 минут.',
+  description: 'Биржа мастеров для ремонта и строительства по всей Молдове. Опубликуйте заявку и получите отклики за 15 минут.',
   metadataBase: new URL(SITE_URL),
   openGraph: {
     type: 'website',

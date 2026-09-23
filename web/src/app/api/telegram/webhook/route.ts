@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 /**
  * Telegram Bot Webhook
@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
-    const supabase = await createClient();
+    const supabase = createAdminClient();
 
     // Check if this chat_id already linked to someone else
     const { data: existing } = await supabase
@@ -103,7 +103,7 @@ export async function POST(req: NextRequest) {
 
   // Handle /stop — unlink
   if (text.startsWith('/stop')) {
-    const supabase = await createClient();
+    const supabase = createAdminClient();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (supabase.from('profiles') as any)
       .update({ telegram_chat_id: null })

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { sendTelegramMessage } from '@/lib/telegram';
 
 export async function selectWorker(jobId: string, bidId: string, workerId: string, locale: string) {
@@ -35,7 +36,7 @@ export async function selectWorker(jobId: string, bidId: string, workerId: strin
 
   // Notify selected worker via Telegram (fire-and-forget)
   try {
-    const { data: workerProfile } = await supabase
+    const { data: workerProfile } = await createAdminClient()
       .from('profiles')
       .select('telegram_chat_id, name')
       .eq('id', workerId)
