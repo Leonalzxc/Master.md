@@ -31,12 +31,12 @@ export default async function AdminPage({ params }: Props) {
   const [
     { data: rawUsers, count: userCount },
     { data: rawJobs, count: jobCount },
-    { data: rawReviews, count: reviewCount },
+    { count: reviewCount },
     { data: rawPendingVerifications },
   ] = await Promise.all([
     admin.from('profiles').select('*', { count: 'exact' }).order('created_at', { ascending: false }).limit(100),
     admin.from('jobs').select('*', { count: 'exact' }).order('created_at', { ascending: false }).limit(100),
-    admin.from('reviews').select('id', { count: 'exact' }),
+    admin.from('reviews').select('id', { count: 'exact', head: true }),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (admin.from('profiles_worker') as any)
       .select('id, verification_submitted_at, categories, bio')
@@ -50,7 +50,6 @@ export default async function AdminPage({ params }: Props) {
 
   // Fetch bid_credits for all workers
   const workerIds = users.filter((u) => u.role === 'worker').map((u) => u.id);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: rawWorkerCredits } = workerIds.length > 0
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ? await (admin.from('profiles_worker') as any).select('id, bid_credits').in('id', workerIds)

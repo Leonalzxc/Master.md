@@ -6,14 +6,15 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
-    "lint:fix": "eslint --fix",
+    "lint": "eslint . --max-warnings 0",
+    "lint:fix": "eslint . --fix",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "i18n:check": "npx tsx scripts/i18n-sync-check.ts",
+    "i18n:check": "tsx scripts/i18n-sync-check.ts",
     "supabase:check": "node scripts/check-supabase-client.js",
-    "quality": "bash scripts/quality-gate.sh"
+    "quality": "bash scripts/quality-gate.sh",
+    "test": "node --test scripts/test-*.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -31,6 +32,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.5.8",
     "@tailwindcss/postcss": "^4",
     "@types/leaflet": "^1.9.21",
     "@types/node": "^20",

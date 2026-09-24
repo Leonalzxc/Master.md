@@ -152,19 +152,16 @@ export default async function VerifyPage({ params }: Props) {
                     label={t('Указано имя в профиле', 'Nume indicat în profil')}
                     fixHref={!hasName ? `/${locale}/account/profile` : undefined}
                     fixLabel={t('Заполнить профиль', 'Completează profilul')}
-                    locale={locale}
                   />
                   <Requirement
                     met={hasCategories}
                     label={t('Выбрана хотя бы одна специальность', 'Cel puțin o specialitate selectată')}
                     fixHref={!hasCategories ? `/${locale}/account/profile` : undefined}
                     fixLabel={t('Заполнить профиль', 'Completează profilul')}
-                    locale={locale}
                   />
                   <Requirement
                     met={true}
                     label={t('Телефон подтверждён при регистрации', 'Telefon confirmat la înregistrare')}
-                    locale={locale}
                   />
                 </div>
               </div>
@@ -215,8 +212,8 @@ export default async function VerifyPage({ params }: Props) {
   );
 }
 
-function Requirement({ met, label, fixHref, fixLabel, locale }: {
-  met: boolean; label: string; fixHref?: string; fixLabel?: string; locale?: string;
+function Requirement({ met, label, fixHref, fixLabel }: {
+  met: boolean; label: string; fixHref?: string; fixLabel?: string;
 }) {
   return (
     <div className="flex items-center justify-between gap-3">

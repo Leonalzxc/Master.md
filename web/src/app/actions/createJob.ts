@@ -78,22 +78,24 @@ async function notifyMatchingWorkers({
 
   // Find workers in the same city whose categories include this job's category
   // and who have connected Telegram (telegram_chat_id is set)
-  const { data: matchingWorkers } = await (admin as any)
+  const { data: rawMatchingWorkers } = await admin
     .from('profiles')
     .select('id, name, telegram_chat_id')
     .eq('city', city)
     .eq('role', 'worker')
     .not('telegram_chat_id', 'is', null);
 
+  const matchingWorkers = rawMatchingWorkers as { id: string; name: string | null; telegram_chat_id: number }[] | null;
   if (!matchingWorkers || matchingWorkers.length === 0) return;
 
   // Filter by category (profiles_worker.categories is array — need separate query)
   const workerIds = matchingWorkers.map((w: { id: string }) => w.id);
-  const { data: workerMeta } = await (admin as any)
+  const { data: rawWorkerMeta } = await admin
     .from('profiles_worker')
     .select('id, categories')
     .in('id', workerIds);
 
+  const workerMeta = rawWorkerMeta as { id: string; categories: string[] }[] | null;
   const categorySet = new Set(
     (workerMeta ?? [])
       .filter((pw: { id: string; categories: string[] }) =>

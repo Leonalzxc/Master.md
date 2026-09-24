@@ -1,9 +1,8 @@
 #!/usr/bin/env node
-/* eslint-disable @typescript-eslint/no-require-imports */
 /**
  * Аудит границ Supabase client/server:
  *  - server-компоненты (без "use client") НЕ должны импортировать @/lib/supabase/client
- *  - client-компоненты ("use client") НЕ должны импортировать @/lib/supabase/server
+ *  - client-компоненты ("use client") НЕ должны импортировать server/admin Supabase clients
  * Exit 1 при нарушении.
  */
 const fs = require("fs");
@@ -28,13 +27,13 @@ const violations = [];
 for (const file of files) {
   const content = fs.readFileSync(file, "utf8");
   const isClient = /^\s*["']use client["']/m.test(content);
-  const importsServer = /from\s+["']@\/lib\/supabase\/server["']/.test(content);
+  const importsServer = /from\s+["']@\/lib\/supabase\/(?:server|admin)["']/.test(content);
   const importsClient = /from\s+["']@\/lib\/supabase\/client["']/.test(content);
 
   const rel = path.relative(path.join(__dirname, ".."), file);
 
   if (isClient && importsServer) {
-    violations.push(`❌ ${rel}: client-компонент импортирует @/lib/supabase/server`);
+    violations.push(`❌ ${rel}: client-компонент импортирует server/admin Supabase client`);
   }
   if (!isClient && importsClient) {
     violations.push(`❌ ${rel}: server-компонент импортирует @/lib/supabase/client`);

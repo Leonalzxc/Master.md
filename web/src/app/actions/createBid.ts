@@ -53,11 +53,10 @@ export async function createBid(input: {
       .single();
 
     if (jobData) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data: ownerData } = await createAdminClient()
         .from('profiles')
         .select('telegram_chat_id, name')
-        .eq('id', (jobData as any).client_id)
+        .eq('id', (jobData as { client_id: string }).client_id)
         .single();
 
       const owner = ownerData as { telegram_chat_id: number | null; name: string | null } | null;
