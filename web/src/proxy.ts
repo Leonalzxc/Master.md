@@ -9,6 +9,8 @@ export async function proxy(request: NextRequest) {
   // Collect any Supabase session cookie updates
   const updatedCookies: Array<{ name: string; value: string; options: Record<string, unknown> }> = [];
 
+  const COOKIE_MAX_AGE = 60 * 60 * 24 * 400; // 400 days
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -17,7 +19,11 @@ export async function proxy(request: NextRequest) {
         getAll() { return request.cookies.getAll(); },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-          updatedCookies.push(...cookiesToSet);
+          // Merge maxAge into each cookie's options so they survive browser restarts
+          updatedCookies.push(...cookiesToSet.map((c) => ({
+            ...c,
+            options: { ...c.options, maxAge: c.options.maxAge ?? (c.value ? COOKIE_MAX_AGE : 0) },
+          })));
         },
       },
     }
@@ -32,7 +38,9 @@ export async function proxy(request: NextRequest) {
   if (/^\/(ru|ro)\/(account|onboarding)/.test(pathname) && !user) {
     const url = new URL(`/${locale}/auth`, request.url);
     url.searchParams.set('next', pathname);
-    return NextResponse.redirect(url);
+    const response = NextResponse.redirect(url);
+    updatedCookies.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
+    return response;
   }
 
   // Run intl middleware for locale routing

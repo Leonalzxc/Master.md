@@ -42,7 +42,10 @@ before(async () => {
   const schema = readFileSync(resolve(root, 'supabase/migrations/001_init_schema.sql'), 'utf8')
     .split('-- ── Seed data')[0].replace('create extension if not exists "pgcrypto";', '');
   await db.exec(schema);
-  await db.exec(readFileSync(resolve(root, 'supabase/migrations/005_jobs_location.sql'), 'utf8'));
+  for (const file of ['005_jobs_location.sql', '006_notifications.sql',
+    '011_bid_credits_and_admin.sql', '013_fix_profiles_rls.sql', '012_auto_expire_and_notify.sql']) {
+    await db.exec(readFileSync(resolve(root, 'supabase/migrations', file), 'utf8'));
+  }
   await db.exec(`
     alter table profiles add column telegram_chat_id bigint;
     grant all on all tables in schema public to anon, authenticated, service_role;

@@ -5,7 +5,7 @@ import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { blockUser, unblockUser, blockJob, approveVerification, rejectVerification, addCredits } from '@/app/actions/adminActions';
+import { blockUser, unblockUser, blockJob, expireJobs, approveVerification, rejectVerification, addCredits } from '@/app/actions/adminActions';
 import type { Profile, Job, ProfileWorker } from '@/lib/supabase/types';
 
 type Props = { params: Promise<{ locale: string }> };
@@ -120,6 +120,13 @@ export default async function AdminPage({ params }: Props) {
               </div>
             ))}
           </div>
+
+          <form action={expireJobs} className="card p-4 mb-6">
+            <input type="hidden" name="locale" value={locale} />
+            <button type="submit" className="btn-secondary">
+              {locale === 'ro' ? 'Închide cererile expirate' : 'Закрыть просроченные заявки'}
+            </button>
+          </form>
 
           {/* Pending verifications */}
           {pendingVerifications.length > 0 && (

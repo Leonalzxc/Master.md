@@ -148,3 +148,17 @@ export async function addCredits(formData: FormData) {
   if (error) throw new Error(error.message);
   revalidatePath(`/${locale}/admin`);
 }
+
+export async function expireJobs(formData: FormData): Promise<void> {
+  const locale = formData.get('locale') === 'ro' ? 'ro' : 'ru';
+  const session = await createClient();
+  await requireAdmin(session);
+  const admin = createAdminClient() as unknown as {
+    rpc(name: 'expire_overdue_jobs'): Promise<{ error: { message: string } | null }>;
+  };
+  const { error } = await admin.rpc('expire_overdue_jobs');
+  if (error) throw new Error(error.message);
+  revalidatePath(`/${locale}/admin`);
+  revalidatePath(`/${locale}/jobs`);
+  revalidatePath(`/${locale}/account/client`);
+}
