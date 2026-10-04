@@ -98,7 +98,7 @@ SMS → анкета → заявка с местом → отклик → вы�
   максимум 3 за 10 минут, дедупликация update_id, защита от старого /stop.
   Старый UUID пользователя не является токеном и больше не принимается.
 - `TELEGRAM_WEBHOOK_SECRET` обязателен: без него endpoint отвечает 503;
-  неверный заголовок — 401 до обращения к базе. В production secret пока отсутствует.
+  неверный заголовок — 401 до обращения к базе. Секрет теперь добавлен в настройки Production; активный deployment ещё не обновлён.
   Перед включением добавить secret в Vercel и зарегистрировать setWebhook POST
   с тем же secret_token. Токены не размещать в URL браузера или в чате.
 - GitHub push разблокирован: право workflow подтверждено владельцем.
@@ -201,3 +201,16 @@ TLS/hostname verification проходит. Supabase вернул 28P01: лок�
 отклонён, backup/restore и SQL rollout не выполнены. Проверка выводит только код
 ошибки, не значение пароля. Владелец получил инструкции в
 `docs/database-access-for-release.md`.
+
+## Configuration checkpoint
+
+Коммиты 859a74e и cc5a221 отправлены. CI quality, bid-concurrency и Vercel Preview
+PASS для cc5a221. Telegram webhook secret добавлен как Sensitive в Production
+и Preview только ветки codex/stabilize-bids. Значение хранится лишь в ignored
+локальном файле 0600, не выводилось и не попадало в Git. Изменение env вступает
+в силу в следующем deployment; регистрация webhook с secret_token ещё впереди.
+
+Мобильный RO каталог проверен на 320 px, Desktop на 1280 px: горизонтального
+переполнения нет, browser error log пустой. RU/RO ссылки сохраняют filters/next;
+Escape закрывает меню. Viewport возвращён к обычному размеру. Одноразовый
+PostgreSQL контейнер остановлен после успешных 11 concurrency tests.
