@@ -11,6 +11,7 @@ export const files=[
  '202610040004_secure_telegram_links.sql',
  '202610040005_legacy_job_notifications.sql',
  '202610040006_sanitized_photos.sql',
+ '202610040007_job_publication.sql',
 ];
 export function pilotRelease(){
  const entries=files.map(name=>{const sql=readFileSync(new URL(`../supabase/migrations/${name}`,import.meta.url),'utf8');return {name,sha256:createHash('sha256').update(sql).digest('hex'),sql};});

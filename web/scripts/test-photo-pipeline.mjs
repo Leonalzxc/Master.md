@@ -161,7 +161,7 @@ test('new references require a finished upload belonging to the profile/job owne
 
 function uploadForm(initial=[]) {
  let index=0,urls=initial;
- const states=[],effects=[],requests=[],timers=[];
+ const states=[],effects=[],requests=[],timers=[],busyChanges=[];
  const react={useState:v=>{const i=index++;if(!(i in states))states[i]=v;return [states[i],v=>states[i]=v];},
   useRef:v=>{const i=index++;if(!(i in states))states[i]={current:v};return states[i];},useEffect:fn=>effects.push(fn)};
  const jsx=(type,props)=>({type,props});
@@ -172,20 +172,22 @@ function uploadForm(initial=[]) {
  },{AbortController,setTimeout:fn=>{timers.push(fn);return timers.length;},clearTimeout:()=>{},
   fetch:(url,options)=>{assert.equal(url,'/api/photos');return new Promise((resolve,reject)=>requests.push({resolve,reject,options}));}}).default;
  const all=tree=>Array.isArray(tree)?tree.flatMap(all):!tree||typeof tree!=='object'?[]:[tree,...all(tree.props?.children)];
- const render=()=>{index=0;effects.length=0;const nodes=all(Form({urls,onChange:v=>urls=v,locale:'ru'}));effects[0]();return nodes;};
+ const render=()=>{index=0;effects.length=0;const nodes=all(Form({urls,onChange:v=>urls=v,locale:'ru',onBusyChange:v=>busyChanges.push(v)}));effects[0]();return nodes;};
  render();const cleanup=effects[1]();
- return {requests,render,cleanup,urls:()=>urls,pick:files=>render().find(n=>n.type==='input').props.onChange({target:{files,value:'x'}})};
+ return {requests,render,cleanup,busyChanges,urls:()=>urls,pick:files=>render().find(n=>n.type==='input').props.onChange({target:{files,value:'x'}})};
 }
 const flush=()=>new Promise(resolve=>setImmediate(resolve));
 test('actual photo form blocks re-entry, keeps partial successes and releases loading on failure',async()=>{
  const h=uploadForm(),file=new File(['image'],'x.jpg',{type:'image/jpeg'});
  h.pick([file,file]);h.pick([file]);assert.equal(h.requests.length,1);
+ assert.deepEqual(h.busyChanges,[true]);
  h.requests[0].resolve(Response.json({url:'https://example.test/first.jpg'},{status:201}));await flush();
  assert.deepEqual(Array.from(h.urls()),['https://example.test/first.jpg']);assert.equal(h.requests.length,2);
  h.requests[1].reject(Error('offline'));await flush();
  assert.deepEqual(Array.from(h.urls()),['https://example.test/first.jpg']);
  assert.ok(h.render().some(n=>n.props?.role==='alert'));
  assert.equal(h.render().find(n=>n.type==='button'&&n.props['aria-label']==='Добавить фото').props.disabled,false);
+ assert.deepEqual(h.busyChanges,[true,false]);
  h.cleanup();
 });
 test('actual photo removal changes only the draft and unmount cancels a pending upload',async()=>{
@@ -194,5 +196,6 @@ test('actual photo removal changes only the draft and unmount cancels a pending 
  assert.deepEqual(h.urls(),[]);assert.equal(h.requests.length,0);
  h.pick([new File(['x'],'x.jpg',{type:'image/jpeg'})]);h.cleanup();
  assert.equal(h.requests[0].options.signal.aborted,true);
+ assert.deepEqual(h.busyChanges,[true,false]);
  h.requests[0].reject(Error('aborted'));await flush();assert.deepEqual(h.urls(),[]);
 });

@@ -7,12 +7,13 @@ interface Props {
   onChange: (urls: string[]) => void;
   locale: string;
   maxFiles?: number;
+  onBusyChange?: (busy: boolean) => void;
 }
 
 const MAX_FILES = 5;
 const MAX_SIZE_MB = 4;
 
-export default function PhotoUpload({ urls, onChange, locale, maxFiles = MAX_FILES }: Props) {
+export default function PhotoUpload({ urls, onChange, locale, maxFiles = MAX_FILES, onBusyChange }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -21,8 +22,12 @@ export default function PhotoUpload({ urls, onChange, locale, maxFiles = MAX_FIL
   const changed = useRef(onChange);
   const controller = useRef<AbortController | null>(null);
   const alive = useRef(true);
-  useEffect(() => { currentUrls.current = urls; changed.current = onChange; }, [urls, onChange]);
-  useEffect(() => { alive.current = true; return () => { alive.current = false; controller.current?.abort(); }; }, []);
+  const busyChanged = useRef(onBusyChange);
+  useEffect(() => { currentUrls.current = urls; changed.current = onChange; busyChanged.current = onBusyChange; }, [urls, onChange, onBusyChange]);
+  useEffect(() => { alive.current = true; return () => {
+    alive.current = false; controller.current?.abort();
+    if (busy.current) busyChanged.current?.(false);
+  }; }, []);
 
   async function handleFiles(files: FileList) {
     if (busy.current) return;
@@ -41,6 +46,7 @@ export default function PhotoUpload({ urls, onChange, locale, maxFiles = MAX_FIL
     }
 
     busy.current = true;
+    busyChanged.current?.(true);
     setUploading(true);
     try {
       for (const file of picked) {
@@ -73,7 +79,7 @@ export default function PhotoUpload({ urls, onChange, locale, maxFiles = MAX_FIL
     } finally {
       busy.current = false;
       controller.current = null;
-      if (alive.current) setUploading(false);
+      if (alive.current) { setUploading(false); busyChanged.current?.(false); }
     }
   }
 

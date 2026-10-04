@@ -200,3 +200,34 @@ test('expiry holding the job lock prevents a later bid from being inserted',asyn
   assert.equal((await pending).error?.message,'job_unavailable');
   assert.deepEqual(await state(db),{credits:5,bids:0,notifications:0});
 });
+
+test('two publication connections retry one form: one job and one notification', async () => {
+  const {pilotRelease} = await import('../pilot-release.mjs');
+  await db.exec(pilotRelease());
+  await db.query("update profiles set city='Бельцы' where id=$1", [workerId]);
+  await db.query("update profiles_worker set categories=array['electric'] where id=$1", [workerId]);
+  const input=JSON.stringify({description:'Real concurrent publication test request',category:'electric',city:'Бельцы',area:'Центр',
+    lat:47.76,lng:27.93,budget:100,urgent:false,needs_quote:false,photos:[]});
+  const key='40000000-0000-4000-8000-000000000001';
+  const a=await connect(),b=await connect();await actor(a,clientId);await actor(b,clientId);
+  await a.query('begin');const first=(await a.query('select * from publish_pilot_job($1,$2)',[key,input])).rows[0];
+  const pending=outcome(b.query('select * from publish_pilot_job($1,$2)',[key,input]));
+  await waitForLock(b);await a.query('commit');const result=await pending;assert.ifError(result.error);
+  assert.equal(result.value.rows[0].job_id,first.job_id);assert.equal(result.value.rows[0].created,false);
+  assert.equal((await db.query('select count(*)::int n from jobs')).rows[0].n,3);
+  assert.equal((await db.query("select count(*)::int n from notifications where payload->>'job_id'=$1",[first.job_id])).rows[0].n,1);
+});
+
+test('parallel different publications cannot bypass the fifth-job rolling cap', async () => {
+  const {pilotRelease} = await import('../pilot-release.mjs');await db.exec(pilotRelease());
+  const input=JSON.stringify({description:'Valid job for concurrent daily-cap test',category:'electric',city:'Бельцы',area:'Центр',
+    lat:47.76,lng:27.93,budget:null,urgent:false,needs_quote:false,photos:[]});
+  const key=i=>`40000000-0000-4000-8000-${String(i).padStart(12,'0')}`;
+  const a=await connect(),b=await connect();await actor(a,clientId);await actor(b,clientId);
+  for(const i of [1,2])await a.query('select * from publish_pilot_job($1,$2)',[key(i),input]);
+  await a.query('begin');await a.query('select * from publish_pilot_job($1,$2)',[key(3),input]);
+  const pending=outcome(b.query('select * from publish_pilot_job($1,$2)',[key(4),input]));
+  await waitForLock(b);await a.query('commit');assert.equal((await pending).error?.message,'job_daily_limit');
+  assert.equal((await db.query('select count(*)::int n from jobs')).rows[0].n,5);
+  assert.equal((await db.query('select count(*)::int n from job_publications')).rows[0].n,3);
+});

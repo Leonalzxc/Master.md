@@ -1,14 +1,11 @@
 // Runs PostgreSQL permissions/RLS tests in an isolated in-memory database.
 // Never loads .env or connects to Supabase. See docs/profile-privacy-rollout.md.
 import { readFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
-import vm from 'node:vm';
 
-const require = createRequire(import.meta.url);
 const { PGlite } = process.env.PGLITE_MODULE_PATH
   ? await import(process.env.PGLITE_MODULE_PATH)
   : await import('@electric-sql/pglite');
@@ -151,59 +148,4 @@ test('migration is repeatable and removes legacy per-column grants', async () =>
   await db.exec(migration);
   await actor(null, 'anon');
   await assert.rejects(db.query('select phone from profiles'), { code: '42501' });
-});
-
-test('createJob action inserts against the real jobs schema without a title column', async () => {
-  // Run the actual action; replace only network/framework dependencies. Execute
-  // its generated INSERT in PostgreSQL so unknown columns cause a real failure.
-  await actor(client);
-  const ts = require('typescript');
-  const source = readFileSync(resolve(root, 'src/app/actions/createJob.ts'), 'utf8');
-  const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText;
-  let inserted; const background=[];
-  const supabase = {
-    auth: { getUser: async () => ({ data: { user: { id: client } } }) },
-    from: (table) => {
-      assert.equal(table, 'jobs');
-      return { insert: (row) => ({ select: () => ({ single: async () => {
-        const keys = Object.keys(row);
-        const result = await db.query(`insert into jobs (${keys.join(',')}) values (${keys.map((_, i) => '$' + (i + 1)).join(',')}) returning id`, Object.values(row));
-        inserted = result.rows[0].id;
-        return { data: result.rows[0], error: null };
-      } }) }) };
-    },
-  };
-  const mod = { exports: {} };
-  vm.runInNewContext(compiled, {
-    exports: mod.exports, module: mod, process: { env: {} }, console: { error() {} },
-    require: (name) => {
-      if (name === 'next/navigation') return { redirect: (path) => { throw new Error('REDIRECT:' + path); } };
-      if (name === 'next/cache') return { revalidatePath() {} };
-      if (name === 'next/server') return { after: fn => background.push(fn) };
-      if (name.endsWith('/supabase/server')) return { createClient: async () => supabase };
-      if (name.endsWith('/supabase/admin')) return { createAdminClient: () => { throw new Error('Notifications disabled in test'); } };
-      if (name === '@/lib/telegram-security') return { escapeTelegramHtml: value => value };
-      if (name.endsWith('/telegram')) return { sendTelegramMessage() { throw new Error('No external messages allowed'); } };
-      if (name.endsWith('/mock/data')) return { CATEGORY_LABELS_RU: {} };
-      if (name === '@/lib/jobs') {
-        const compileDomain = (file, imports) => {
-          const code = ts.transpileModule(readFileSync(resolve(root,file),'utf8'), {compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText;
-          const result={exports:{}}; vm.runInNewContext(code,{module:result,exports:result.exports,require:imports,Number}); return result.exports;
-        };
-        const pilot=compileDomain('src/lib/pilot.ts',require);
-        return compileDomain('src/lib/jobs.ts',dep => dep === './pilot' ? pilot : require(dep));
-      }
-      throw new Error('Unexpected dependency: ' + name);
-    },
-  });
-  const result = await mod.exports.createJob({
-    category: 'electric', description: 'Real schema creation regression test',
-    city: 'Бельцы', area: 'Центр', lat: 47.76, lng: 27.93, budget: '100',
-    urgent: false, needsQuote: false, photos: [], locale: 'ru',
-  });
-  assert.equal(result.ok,true);
-  assert.equal(result.jobId,inserted);
-  assert.ok(inserted);
-  assert.equal(background.length,1);
-  await background[0](); // Notification failure must not undo the committed request.
 });

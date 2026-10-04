@@ -1,7 +1,7 @@
 'use client';
 
 import TelegramConnection from './TelegramConnection';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { CATEGORY_LABELS_RU, CATEGORY_LABELS_RO, CATEGORY_ICONS, CITIES, AREAS, type Category } from '@/lib/mock/data';
 import { updateProfile } from '@/app/actions/updateProfile';
@@ -36,6 +36,10 @@ export default function ProfileForm({ locale, profile, workerProfile, telegramCo
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const saving = useRef(false);
+  const photoBusy = useRef(false);
+  const onPhotoBusyChange = (busy: boolean) => { photoBusy.current = busy; setPhotoUploading(busy); };
 
   const availableAreas = city ? (AREAS[city] ?? []) : [];
 
@@ -52,7 +56,9 @@ export default function ProfileForm({ locale, profile, workerProfile, telegramCo
   }
 
   async function handleSave() {
+    if (saving.current || photoBusy.current) return;
     if (!name.trim()) { setError(t('Укажите имя', 'Indicați numele')); return; }
+    saving.current = true;
     setLoading(true);
     setError('');
     try {
@@ -63,12 +69,13 @@ export default function ProfileForm({ locale, profile, workerProfile, telegramCo
     } catch (e) {
       setError(e instanceof Error ? e.message : t('Ошибка сохранения', 'Eroare la salvare'));
     } finally {
+      saving.current = false;
       setLoading(false);
     }
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <fieldset disabled={loading} className="flex flex-col gap-6" style={{border:0,padding:0,margin:0,minWidth:0}}>
 
       {/* Role switcher */}
       <section className="card p-5">
@@ -83,6 +90,7 @@ export default function ProfileForm({ locale, profile, workerProfile, telegramCo
             <button
               key={r}
               type="button"
+              disabled={photoUploading}
               onClick={() => setRole(r)}
               className="rounded-2xl p-4 text-left flex flex-col gap-1 border-2 transition-all"
               style={{
@@ -253,7 +261,7 @@ export default function ProfileForm({ locale, profile, workerProfile, telegramCo
                 {t('Портфолио', 'Portofoliu')}
               </h2>
               <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
-                {t('Фотографии ваших работ — до 10 фото, до 5 МБ каждое', 'Fotografii ale lucrărilor dvs. — până la 10 poze, max 5 MB')}
+                {t('Фотографии ваших работ — до 10 фото, до 4 МБ каждое', 'Fotografii ale lucrărilor dvs. — până la 10 poze, max 4 MB')}
               </p>
             </div>
             <PhotoUpload
@@ -261,6 +269,7 @@ export default function ProfileForm({ locale, profile, workerProfile, telegramCo
               onChange={setPortfolioPhotos}
               locale={locale}
               maxFiles={10}
+              onBusyChange={onPhotoBusyChange}
             />
           </section>
         </>
@@ -269,16 +278,16 @@ export default function ProfileForm({ locale, profile, workerProfile, telegramCo
       <TelegramConnection locale={locale} connected={telegramConnected} />
 
       {/* Save */}
-      {error && <p className="text-sm" style={{ color: 'var(--danger)' }}>{error}</p>}
+      {error && <p role="alert" className="text-sm" style={{ color: 'var(--danger)' }}>{error}</p>}
 
       <div className="flex items-center gap-4">
         <button
           onClick={handleSave}
-          disabled={loading}
+          disabled={loading || photoUploading}
           className="btn-primary"
           style={{ minWidth: 160, opacity: loading ? 0.7 : 1 }}
         >
-          {loading ? '...' : t('Сохранить', 'Salvează')}
+          {photoUploading ? t('Дождитесь загрузки фото', 'Așteptați încărcarea pozelor') : loading ? '...' : t('Сохранить', 'Salvează')}
         </button>
         {saved && (
           <span className="text-sm font-semibold" style={{ color: 'var(--success)' }}>
@@ -286,6 +295,6 @@ export default function ProfileForm({ locale, profile, workerProfile, telegramCo
           </span>
         )}
       </div>
-    </div>
+    </fieldset>
   );
 }
