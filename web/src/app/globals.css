@@ -274,3 +274,6 @@ main {
 details summary { list-style: none; }
 details summary::-webkit-details-marker { display: none; }
 details[open] summary span:last-child { transform: rotate(180deg); display: inline-block; }
+
+.notification-dropdown { position: absolute; top: calc(100% + 8px); right: 0; width: 320px; max-width: calc(100vw - 32px); }
+@media (max-width: 767px) { .notification-dropdown { position: fixed; top: 68px; right: 16px; } }

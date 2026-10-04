@@ -194,8 +194,8 @@ export default async function JobDetailPage({ params }: Props) {
                     <div className="text-3xl mb-2">⏳</div>
                     <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>
                       {locale === 'ru'
-                        ? 'Откликов пока нет. Обычно первые появляются в течение 15–30 минут.'
-                        : 'Nu există oferte încă. De obicei primele apar în 15–30 de minute.'}
+                        ? 'Откликов пока нет. Мастера смогут отправить предложения, когда увидят вашу заявку.'
+                        : 'Nu există oferte încă. Meșterii pot trimite propuneri când văd cererea.'}
                     </p>
                   </div>
                 ) : (

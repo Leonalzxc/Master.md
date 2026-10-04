@@ -55,4 +55,3 @@ export async function sendTelegramMessage({ chatId, text, parseMode = 'HTML', di
     return false;
   }
 }
-

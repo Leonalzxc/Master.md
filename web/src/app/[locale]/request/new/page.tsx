@@ -25,7 +25,7 @@ export default async function NewRequestPage({ params }: Props) {
               {locale === 'ru' ? 'Создать заявку' : 'Creează cerere'}
             </h1>
             <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
-              {locale === 'ru' ? 'Бесплатно · Отклики от мастеров за 15–30 мин' : 'Gratuit · Oferte de la meșteri în 15–30 min'}
+              {locale === 'ru' ? 'Бесплатный пилот · Бельцы' : 'Pilot gratuit · Bălți'}
             </p>
           </div>
           <RequestWizard locale={locale} />

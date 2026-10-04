@@ -66,7 +66,7 @@ export default async function VerifyPage({ params }: Props) {
                 {t('Вы уже верифицированы!', 'Ești deja verificat!')}
               </h2>
               <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>
-                {t('Ваш профиль имеет значок ✓ Проверен. Клиенты видят вас как надёжного мастера.', 'Profilul dvs. are insigna ✓ Verificat. Clienții vă văd ca un meșter de încredere.')}
+                {t('Ваш профиль имеет значок ✓ Проверен. Клиенты видят вас как надёжного мастера.', 'Profilul dvs. a fost examinat de un moderator. Insigna nu garantează calitatea lucrărilor.')}
               </p>
               <Link href={`/${locale}/workers/${user.id}`} className="btn-primary" style={{ fontSize: 14 }}>
                 {t('Посмотреть профиль', 'Vezi profilul')}
@@ -127,7 +127,7 @@ export default async function VerifyPage({ params }: Props) {
                 <div className="flex flex-col gap-3">
                   {[
                     { icon: '🛡️', text: t('Значок ✓ Проверен в поиске и на профиле — сразу виден клиентам', 'Insigna ✓ Verificat în căutare și pe profil — vizibilă imediat pentru clienți') },
-                    { icon: '📈', text: t('Верифицированные мастера получают на 40% больше откликов', 'Meșterii verificați primesc cu 40% mai multe oferte') },
+                    { icon: '📈', text: t('Профиль вручную просмотрен модератором; квалификация и качество работ не гарантируются', 'Profilul este examinat manual; calificarea și calitatea lucrărilor nu sunt garantate') },
                     { icon: '🤝', text: t('Клиенты охотнее доверяют проверенным мастерам свои заявки', 'Clienții au mai multă încredere în meșterii verificați') },
                   ].map(({ icon, text }) => (
                     <div key={text} className="flex items-start gap-3">

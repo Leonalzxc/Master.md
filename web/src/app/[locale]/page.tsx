@@ -482,8 +482,8 @@ function CtaBanner({ locale }: { locale: string }) {
             style={{ color: 'rgba(255,255,255,.6)', fontSize: 16, maxWidth: 460, margin: '0 auto 28px' }}
           >
             {locale === 'ru'
-              ? 'Опубликуйте заявку бесплатно — первые отклики придут уже через 15 минут.'
-              : 'Publicați cererea gratuit — primele oferte vor veni în 15 minute.'}
+              ? 'Опишите задачу и отметьте место на карте. Мастера смогут предложить цену и сроки.'
+              : 'Descrieți sarcina și marcați locul pe hartă. Meșterii pot propune prețuri și termene.'}
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center relative">
             <Link

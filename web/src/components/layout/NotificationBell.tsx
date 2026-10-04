@@ -40,6 +40,8 @@ export default function NotificationBell() {
   const locale = useLocale();
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<Notification[]>([]);
+  const [loadError, setLoadError] = useState(false);
+  const [readError, setReadError] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const dropRef = useRef<HTMLDivElement>(null);
 
@@ -49,20 +51,23 @@ export default function NotificationBell() {
   useEffect(() => {
     const supabase = createClient();
     // Store channel ref outside async function so cleanup can access it
+    let alive = true;
     let channelRef: ReturnType<typeof supabase.channel> | null = null;
 
     async function init() {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!alive || !user) return;
       setUserId(user.id);
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data } = await (supabase.from('notifications') as any)
+      const { data, error } = await (supabase.from('notifications') as any)
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(30);
 
+      if (!alive) return;
+      setLoadError(!!error);
       if (data) setItems(data as Notification[]);
 
       // Realtime: new notifications pushed by DB triggers
@@ -77,15 +82,17 @@ export default function NotificationBell() {
             filter: `user_id=eq.${user.id}`,
           },
           (payload) => {
-            setItems((prev) => [payload.new as Notification, ...prev]);
+            if (!alive) return;
+            const item = payload.new as Notification;
+            setItems((prev) => [item, ...prev.filter(n => n.id !== item.id)].slice(0, 30));
           },
         )
         .subscribe();
     }
 
-    init();
+    init().catch(() => { if (alive) setLoadError(true); });
     // Cleanup: unsubscribe realtime channel on unmount
-    return () => { if (channelRef) supabase.removeChannel(channelRef); };
+    return () => { alive = false; if (channelRef) supabase.removeChannel(channelRef); };
   }, []);
 
   // Close on outside click
@@ -101,14 +108,17 @@ export default function NotificationBell() {
 
   const markAllRead = useCallback(async () => {
     if (!userId || unread === 0) return;
-    const supabase = createClient();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase.from('notifications') as any)
-      .update({ read: true })
-      .eq('user_id', userId)
-      .eq('read', false);
-    setItems((prev) => prev.map((n) => ({ ...n, read: true })));
-  }, [userId, unread]);
+    const ids = items.filter(n => !n.read).map(n => n.id);
+    try {
+      const supabase = createClient();
+      // Only mark the displayed snapshot; a notification arriving during the request stays unread.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const {error} = await (supabase.from('notifications') as any).update({read:true}).eq('user_id',userId).in('id',ids);
+      if (error) { setReadError(true); return; }
+      setReadError(false);
+      setItems(prev => prev.map(n => ids.includes(n.id) ? {...n,read:true} : n));
+    } catch { setReadError(true); }
+  }, [userId, unread, items]);
 
   const handleOpen = () => {
     setOpen((v) => !v);
@@ -127,7 +137,8 @@ export default function NotificationBell() {
       {/* Bell button */}
       <button
         onClick={handleOpen}
-        aria-label="Уведомления"
+        aria-label={locale === 'ru' ? 'Уведомления' : 'Notificări'}
+        aria-expanded={open}
         style={{
           position: 'relative',
           width: 38, height: 38,
@@ -165,11 +176,8 @@ export default function NotificationBell() {
       {/* Dropdown */}
       {open && (
         <div
+          className="notification-dropdown"
           style={{
-            position: 'absolute',
-            top: 'calc(100% + 8px)',
-            right: 0,
-            width: 320,
             background: 'var(--bg-elevated)',
             border: '1px solid var(--glass-border)',
             borderRadius: 'var(--radius-md)',
@@ -205,7 +213,8 @@ export default function NotificationBell() {
 
           {/* List */}
           <div style={{ maxHeight: 360, overflowY: 'auto' }}>
-            {items.length === 0 ? (
+            {(loadError || readError) && <p role="alert" className="p-3 text-sm" style={{color:'var(--danger)'}}>{locale === 'ru' ? 'Не удалось обновить уведомления. Повторите позже.' : 'Notificările nu au fost actualizate. Reîncercați mai târziu.'}</p>}
+            {items.length === 0 && !loadError ? (
               <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
                 {locale === 'ru' ? 'Нет уведомлений' : 'Nicio notificare'}
               </div>
@@ -227,7 +236,7 @@ export default function NotificationBell() {
                   onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--surface-subtle)'; }}
                   onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = n.read ? 'transparent' : 'var(--accent-dim)'; }}
                 >
-                  <span style={{ fontSize: 20, lineHeight: 1.4 }}>{TYPE_ICON[n.type]}</span>
+                  <span style={{ fontSize: 20, lineHeight: 1.4 }}>{TYPE_ICON[n.type] ?? '📋'}</span>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 2 }}>
                       {n.title}
