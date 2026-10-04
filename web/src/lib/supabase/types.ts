@@ -280,6 +280,10 @@ export interface Database {
     };
     Views: Record<string, never>;
     Functions: {
+      submit_bid: {
+        Args: { p_job_id: string; p_price: number; p_comment: string; p_start_date?: string | null };
+        Returns: { bid_id: string; created: boolean; credits_remaining: number }[];
+      };
       get_my_profile: {
         Args: Record<string, never>;
         Returns: Profile[];

@@ -5,46 +5,47 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendTelegramMessage } from '@/lib/telegram';
 
-export async function createBid(input: {
-  jobId: string;
-  price: number;
-  comment: string;
-  startDate: string;
-  locale: string;
-}) {
+import { bidInputSchema, bidErrors, type BidError, type BidInput, type BidResult, type SubmitBidRow } from '@/lib/bids';
+
+// Expected domain errors are returned, not thrown: production Server Actions
+// intentionally hide thrown error messages from the browser.
+export async function createBid(input: BidInput): Promise<BidResult> {
+  const parsed = bidInputSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'invalid_input' };
+  input = parsed.data;
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('not_authenticated');
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return { ok: false, error: 'not_authenticated' };
 
-  // Must have role = 'worker'
-  const { data: rawProfile } = await supabase
-    .from('profiles').select('role').eq('id', user.id).single();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  if ((rawProfile as any)?.role !== 'worker') throw new Error('not_worker');
-
-  // Atomically deduct 1 bid credit (DB-level lock prevents race conditions)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: credited } = await (supabase as any).rpc('spend_bid_credit', { p_worker_id: user.id });
-  if (!credited) throw new Error('no_credits');
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase.from('bids') as any).insert({
-    job_id: input.jobId,
-    worker_id: user.id,
-    price: input.price,
-    comment: input.comment.trim(),
-    start_date: input.startDate || null,
-    status: 'sent',
+  const rpcClient = supabase as unknown as {
+    rpc(name: 'submit_bid', args: {
+      p_job_id: string; p_price: number; p_comment: string; p_start_date: string | null;
+    }): PromiseLike<{ data: SubmitBidRow[] | null; error: { message: string; code: string } | null }>;
+  };
+  const { data, error } = await rpcClient.rpc('submit_bid', {
+    p_job_id: input.jobId, p_price: input.price,
+    p_comment: input.comment, p_start_date: input.startDate || null,
   });
-
   if (error) {
-    if (error.code === '23505') throw new Error('already_bid');
-    throw new Error(error.message);
+    if (error.code === 'P0001' && bidErrors.includes(error.message as BidError)) {
+      return { ok: false, error: error.message as BidError };
+    }
+    console.error('[createBid] submit_bid failed', { code: error.code });
+    return { ok: false, error: 'temporarily_unavailable' };
   }
-
+  const submitted = data?.[0];
+  if (!submitted) return { ok: false, error: 'temporarily_unavailable' };
+  const result: BidResult = {
+    ok: true, bidId: submitted.bid_id, created: submitted.created,
+    creditsRemaining: submitted.credits_remaining,
+  };
   revalidatePath(`/${input.locale}/jobs/${input.jobId}`);
 
-  // Notify job owner via Telegram (fire-and-forget)
+  revalidatePath(`/${input.locale}/account/worker`);
+  revalidatePath(`/${input.locale}/credits`);
+  if (!submitted.created) return result;
+
+  // Notify only on a new bid. Database notifications are in the transaction.
   try {
     const { data: jobData } = await supabase
       .from('jobs')
@@ -67,7 +68,7 @@ export async function createBid(input: {
           .eq('id', user.id)
           .single();
         const workerName = (workerData as { name: string | null } | null)?.name ?? 'Мастер';
-        const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://master.md';
+        const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://master-md.vercel.app';
 
         await sendTelegramMessage({
           chatId: owner.telegram_chat_id,
@@ -78,4 +79,5 @@ export async function createBid(input: {
   } catch {
     // Notifications are non-critical — don't fail the bid creation
   }
+  return result;
 }

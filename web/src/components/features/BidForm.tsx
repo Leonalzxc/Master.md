@@ -4,12 +4,14 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { createBid } from '@/app/actions/createBid';
+import type { BidError } from '@/lib/bids';
 
-type AuthState = 'loading' | 'guest' | 'not_worker' | 'ready' | 'already_bid' | 'no_credits';
+type AuthState = 'loading' | 'guest' | 'not_worker' | 'ready' | 'already_bid' | 'no_credits' | 'unavailable';
 
 interface Props { jobId: string; locale: string; expired?: boolean }
 
 export default function BidForm({ jobId, locale, expired = false }: Props) {
+  const [checkVersion, setCheckVersion] = useState(0);
   const [authState, setAuthState] = useState<AuthState>('loading');
   const [bidCredits, setBidCredits] = useState<number | null>(null);
   const [open, setOpen] = useState(false);
@@ -22,38 +24,52 @@ export default function BidForm({ jobId, locale, expired = false }: Props) {
 
   useEffect(() => {
     const supabase = createClient();
-
+    let active = true;
     async function check() {
-      const { data: { user } } = await supabase.auth.getUser();
+      setAuthState('loading');
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (!active) return;
       if (!user) { setAuthState('guest'); return; }
-
-      // Check role + existing bid + credits in parallel
-      const [{ data: profile }, { data: existingBid }, { data: workerData }] = await Promise.all([
-        supabase.from('profiles').select('role').eq('id', user.id).single(),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (supabase.from('bids') as any).select('id').eq('job_id', jobId).eq('worker_id', user.id).maybeSingle(),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (supabase.from('profiles_worker') as any).select('bid_credits').eq('id', user.id).single(),
+      if (authError) { setAuthState('unavailable'); return; }
+      const [profileResult, existingResult, workerResult] = await Promise.all([
+        supabase.from('profiles').select('role,blocked_at').eq('id', user.id).maybeSingle(),
+        supabase.from('bids').select('id').eq('job_id', jobId).eq('worker_id', user.id).maybeSingle(),
+        supabase.from('profiles_worker').select('bid_credits').eq('id', user.id).maybeSingle(),
       ]);
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      if ((profile as any)?.role !== 'worker') { setAuthState('not_worker'); return; }
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      if (existingBid as any) { setAuthState('already_bid'); return; }
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const credits = (workerData as any)?.bid_credits ?? 0;
-      setBidCredits(credits);
-      if (credits < 1) { setAuthState('no_credits'); return; }
-      setAuthState('ready');
+      if (!active) return;
+      if (profileResult.error || existingResult.error || workerResult.error) {
+        setAuthState('unavailable'); return;
+      }
+      const profile = profileResult.data as { role: string; blocked_at: string | null } | null;
+      const worker = workerResult.data as { bid_credits: number } | null;
+      if (profile?.blocked_at) { setAuthState('unavailable'); return; }
+      if (existingResult.data) { setAuthState('already_bid'); return; }
+      if (profile?.role !== 'worker' || !worker) { setAuthState('not_worker'); return; }
+      setBidCredits(worker.bid_credits);
+      setAuthState(worker.bid_credits < 1 ? 'no_credits' : 'ready');
     }
+    check().catch(() => { if (active) setAuthState('unavailable'); });
+    return () => { active = false; };
+  }, [jobId, checkVersion]);
 
-    check();
-  }, [jobId]);
+  function errorText(code: BidError) {
+    const messages: Record<BidError, [string, string]> = {
+      not_authenticated: ['Войдите в аккаунт', 'Autentificați-vă'],
+      not_worker: ['Заполните профиль мастера', 'Completați profilul de meșter'],
+      account_blocked: ['Аккаунт заблокирован. Обратитесь в поддержку.', 'Contul este blocat. Contactați asistența.'],
+      own_job: ['Нельзя откликнуться на свою заявку', 'Nu puteți oferta propria cerere'],
+      job_unavailable: ['Заявка уже закрыта или срок истёк', 'Cererea este închisă sau a expirat'],
+      no_credits: ['Недостаточно кредитов', 'Credite insuficiente'],
+      invalid_input: ['Проверьте цену, комментарий и дату начала', 'Verificați prețul, comentariul și data'],
+      temporarily_unavailable: ['Отклики временно недоступны. Попробуйте позже.', 'Ofertele sunt temporar indisponibile. Reîncercați mai târziu.'],
+    };
+    return t(...messages[code]);
+  }
 
   function validate() {
     const e: typeof errors = {};
     const n = Number(form.price);
-    if (!form.price || isNaN(n) || n <= 0) e.price = t('Укажите цену', 'Indicați prețul');
+    if (!form.price || !Number.isFinite(n) || n <= 0 || n > 1_000_000_000) e.price = t('Укажите цену', 'Indicați prețul');
     if (form.comment.trim().length < 10) e.comment = t('Минимум 10 символов', 'Minim 10 caractere');
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -65,14 +81,19 @@ export default function BidForm({ jobId, locale, expired = false }: Props) {
     setLoading(true);
     setServerError('');
     try {
-      await createBid({ jobId, price: Number(form.price), comment: form.comment, startDate: form.startDate, locale });
-      setSent(true);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : '';
-      if (msg === 'not_authenticated') setAuthState('guest');
-      else if (msg === 'already_bid') setAuthState('already_bid');
-      else if (msg === 'no_credits') setAuthState('no_credits');
-      else setServerError(t('Ошибка. Попробуйте снова.', 'Eroare. Încercați din nou.'));
+      const result = await createBid({ jobId, price: Number(form.price), comment: form.comment, startDate: form.startDate, locale: locale === 'ro' ? 'ro' : 'ru' });
+      if (result.ok) {
+        setBidCredits(result.creditsRemaining);
+        setSent(true);
+      } else {
+        if (result.error === 'not_authenticated') setAuthState('guest');
+        else if (result.error === 'not_worker') setAuthState('not_worker');
+        else if (result.error === 'no_credits') setAuthState('no_credits');
+        else setServerError(errorText(result.error));
+      }
+    } catch {
+      // A lost response may follow a committed bid; retrying is idempotent.
+      setServerError(t('Не удалось получить ответ. Можно повторить — повторный отклик не спишет ещё один кредит.', 'Nu am primit răspunsul. Puteți reîncerca fără o a doua debitare.'));
     } finally {
       setLoading(false);
     }
@@ -89,6 +110,15 @@ export default function BidForm({ jobId, locale, expired = false }: Props) {
         ⏰ {t('Срок подачи откликов истёк', 'Termenul de ofertare a expirat')}
       </div>
     );
+  }
+
+  if (authState === 'unavailable') {
+    return <div className="flex flex-col gap-3 text-sm">
+      <p>{t('Не удалось проверить доступ к откликам. Проверьте соединение или обратитесь в поддержку.', 'Nu am putut verifica accesul. Verificați conexiunea sau contactați asistența.')}</p>
+      <button type="button" className="btn-secondary" onClick={() => setCheckVersion((v) => v + 1)}>
+        {t('Повторить проверку', 'Reîncearcă')}
+      </button>
+    </div>;
   }
 
   if (authState === 'no_credits') {
@@ -134,9 +164,9 @@ export default function BidForm({ jobId, locale, expired = false }: Props) {
         style={{ background: 'var(--surface-2)', color: 'var(--text-muted)' }}
       >
         <span className="text-2xl">👷</span>
-        <p>{t('Зарегистрируйтесь как мастер, чтобы откликаться', 'Înregistrați-vă ca meșter pentru a trimite oferte')}</p>
-        <Link href={`/${locale}/auth`} className="btn-secondary" style={{ fontSize: 13, height: 34 }}>
-          {t('Зарегистрироваться как мастер', 'Înregistrare ca meșter')}
+        <p>{t('Выберите режим мастера в профиле, чтобы откликаться', 'Selectați modul meșter în profil pentru a trimite oferte')}</p>
+        <Link href={`/${locale}/account/profile`} className="btn-secondary" style={{ fontSize: 13, height: 34 }}>
+          {t('Настроить профиль', 'Configurează profilul')}
         </Link>
       </div>
     );
@@ -185,7 +215,7 @@ export default function BidForm({ jobId, locale, expired = false }: Props) {
         <label className="field-label">{t('Цена (MDL) *', 'Preț (MDL) *')}</label>
         <div className="relative">
           <input
-            type="number" min="1"
+            type="number" min="0.01" step="0.01" max="1000000000"
             value={form.price}
             onChange={(e) => { setForm({ ...form, price: e.target.value }); setErrors({ ...errors, price: undefined }); }}
             placeholder="2500"
@@ -202,6 +232,7 @@ export default function BidForm({ jobId, locale, expired = false }: Props) {
         <label className="field-label">{t('Комментарий *', 'Comentariu *')}</label>
         <textarea
           rows={3}
+          maxLength={2000}
           value={form.comment}
           onChange={(e) => { setForm({ ...form, comment: e.target.value }); setErrors({ ...errors, comment: undefined }); }}
           placeholder={t('Опишите подход, опыт, сроки...', 'Descrieți abordarea, experiența, termenele...')}

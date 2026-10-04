@@ -14,7 +14,8 @@
     "i18n:check": "tsx scripts/i18n-sync-check.ts",
     "supabase:check": "node scripts/check-supabase-client.js",
     "quality": "bash scripts/quality-gate.sh",
-    "test": "node --test scripts/test-*.mjs"
+    "test": "node --test scripts/test-*.mjs",
+    "test:concurrency": "node --test scripts/integration/bid-concurrency.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -40,6 +41,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.5",
+    "pg": "8.16.3",
     "prettier": "^3.8.3",
     "tailwindcss": "^4",
     "tsx": "^4.22.2",

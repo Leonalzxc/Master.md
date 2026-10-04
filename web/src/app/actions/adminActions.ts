@@ -131,19 +131,13 @@ export async function addCredits(formData: FormData) {
   await requireAdmin(sessionClient);
   const supabase = createAdminClient();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: pw } = await (supabase.from('profiles_worker') as any)
-    .select('bid_credits')
-    .eq('id', userId)
-    .single();
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const current = (pw as any)?.bid_credits ?? 0;
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase.from('profiles_worker') as any)
-    .update({ bid_credits: current + amount })
-    .eq('id', userId);
+  if (!Number.isInteger(amount) || amount < 1 || amount > 1000) throw new Error('invalid_amount');
+  const rpcClient = supabase as unknown as {
+    rpc(name: 'grant_bid_credits', args: { p_worker_id: string; p_amount: number }): PromiseLike<{
+      error: { message: string } | null;
+    }>;
+  };
+  const { error } = await rpcClient.rpc('grant_bid_credits', { p_worker_id: userId, p_amount: amount });
 
   if (error) throw new Error(error.message);
   revalidatePath(`/${locale}/admin`);
