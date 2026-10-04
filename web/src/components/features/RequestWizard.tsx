@@ -37,15 +37,16 @@ const INITIAL: FormData = {
   budget: '',
 };
 
-interface Props { locale: string }
+interface Props { locale: string; initialCategory?: Category }
 
-export default function RequestWizard({ locale }: Props) {
+export default function RequestWizard({ locale, initialCategory }: Props) {
   const router = useRouter();
   const [step, setStep] = useState(0);
-  const [form, setForm] = useState<FormData>(INITIAL);
+  const [form, setForm] = useState<FormData>({...INITIAL,category:initialCategory ?? ''});
   const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({});
   const [loading, setLoading] = useState(false);
   const [serverError, setServerError] = useState('');
+  const [authRequired, setAuthRequired] = useState(false);
 
   const set = <K extends keyof FormData>(key: K, value: FormData[K]) => {
     setForm((f) => ({ ...f, [key]: value }));
@@ -78,6 +79,7 @@ export default function RequestWizard({ locale }: Props) {
     if (!validateStep()) return;
     setLoading(true);
     setServerError('');
+    setAuthRequired(false);
     try {
       const result = await createJob({
         category: form.category as JobInput['category'],
@@ -93,7 +95,10 @@ export default function RequestWizard({ locale }: Props) {
         locale: locale === 'ro' ? 'ro' : 'ru',
       });
       if (!result.ok) {
-        if (result.error === 'not_authenticated') router.push(`/${locale}/auth?next=/${locale}/request/new`);
+        if (result.error === 'not_authenticated') {
+          setAuthRequired(true);
+          setServerError(locale === 'ru' ? 'Войдите в новой вкладке, затем вернитесь и отправьте форму. Введённые данные сохранятся здесь.' : 'Autentificați-vă într-o filă nouă, apoi reveniți și trimiteți formularul. Datele introduse rămân aici.');
+        }
         else setServerError(jobErrorText(result.error, locale));
         return;
       }
@@ -120,6 +125,7 @@ export default function RequestWizard({ locale }: Props) {
         <p className="text-sm mt-3 text-center" style={{ color: 'var(--danger)' }}>{serverError}</p>
       )}
 
+      {authRequired && <a href={`/${locale}/auth`} target="_blank" rel="noopener noreferrer" className="btn-secondary mt-3">{locale === 'ru' ? 'Войти в новой вкладке →' : 'Autentificare într-o filă nouă →'}</a>}
       <div
         className="flex justify-between gap-3 mt-4"
         style={{ position: 'sticky', bottom: 16, background: 'var(--bg-deep)', padding: '12px 0', zIndex: 10 }}
