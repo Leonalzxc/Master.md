@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { workflowErrorText } from '@/lib/workflow';
 import { selectWorker } from '@/app/actions/selectWorker';
 
 interface Props {
@@ -25,7 +26,8 @@ export default function SelectWorkerButton({ jobId, bidId, workerId, workerName,
 
     setLoading(true);
     try {
-      await selectWorker(jobId, bidId, workerId, locale);
+      const result=await selectWorker(jobId,bidId,workerId,locale);
+      if (!result.ok) { alert(workflowErrorText(result.error,locale)); return; }
       setDone(true);
       router.refresh();
     } catch {
@@ -36,7 +38,7 @@ export default function SelectWorkerButton({ jobId, bidId, workerId, workerName,
   }
 
   if (done) return (
-    <span className="text-sm font-semibold" style={{ color: 'var(--success)' }}>✓ Выбран</span>
+    <span className="text-sm font-semibold" style={{ color: 'var(--success)' }}>{locale === 'ru' ? '✓ Выбран' : '✓ Selectat'}</span>
   );
 
   return (

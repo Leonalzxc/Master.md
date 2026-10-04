@@ -1,11 +1,14 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
+import { workflowErrorText } from '@/lib/workflow';
 import { useState } from 'react';
 import { cancelJob } from '@/app/actions/cancelJob';
 
 interface Props { jobId: string; locale: string }
 
 export default function CancelJobButton({ jobId, locale }: Props) {
+  const router=useRouter();
   const [loading, setLoading] = useState(false);
   const t = (ru: string, ro: string) => locale === 'ru' ? ru : ro;
 
@@ -16,9 +19,12 @@ export default function CancelJobButton({ jobId, locale }: Props) {
     ))) return;
     setLoading(true);
     try {
-      await cancelJob(jobId, locale);
+      const result=await cancelJob(jobId,locale);
+      if (!result.ok) { alert(workflowErrorText(result.error,locale)); return; }
+      router.refresh();
     } catch {
       alert(t('Ошибка. Попробуйте снова.', 'Eroare. Încercați din nou.'));
+    } finally {
       setLoading(false);
     }
   }

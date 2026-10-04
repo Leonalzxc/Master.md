@@ -1,5 +1,7 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
+import { workflowErrorText } from '@/lib/workflow';
 import { useState } from 'react';
 import { submitReview } from '@/app/actions/submitReview';
 
@@ -10,6 +12,7 @@ interface Props {
 }
 
 export default function ReviewForm({ jobId, workerName, locale }: Props) {
+  const router=useRouter();
   const [rating, setRating] = useState(0);
   const [hovered, setHovered] = useState(0);
   const [text, setText] = useState('');
@@ -23,16 +26,13 @@ export default function ReviewForm({ jobId, workerName, locale }: Props) {
     setLoading(true);
     setError('');
     try {
-      await submitReview(jobId, rating, text, locale);
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : '';
-      if (msg === 'already_reviewed') {
-        setError(t('Вы уже оставили отзыв', 'Ați lăsat deja o recenzie'));
-      } else {
-        setError(t('Ошибка. Попробуйте ещё раз.', 'Eroare. Încercați din nou.'));
-      }
-      setLoading(false);
-    }
+      const result=await submitReview(jobId,rating,text,locale);
+      if (!result.ok) { setError(workflowErrorText(result.error,locale)); return; }
+      router.push(`/${locale}/account/client?reviewed=1`);
+      router.refresh();
+    } catch {
+      setError(t('Не удалось получить ответ. Повторная отправка не создаст второй отзыв.', 'Nu am primit răspunsul. Reîncercarea nu va crea o a doua recenzie.'));
+    } finally { setLoading(false); }
   }
 
   const active = hovered || rating;

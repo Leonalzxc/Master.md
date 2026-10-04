@@ -94,3 +94,36 @@ test('a top-up racing a debit preserves both changes to the balance', async () =
   assert.ifError((await pending).error);
   assert.deepEqual(await state(db), { credits: 14, bids: 1, notifications: 1 });
 });
+
+// Test final job workflow using the same real PostgreSQL connections.
+test('concurrent selection and cancellation produce a single consistent outcome', async () => {
+  const { readFileSync } = await import('node:fs');
+  await db.exec(readFileSync(new URL('../../supabase/migrations/202610040001_job_workflow.sql',import.meta.url),'utf8'));
+  const a=await connect(), b=await connect();
+  await actor(a); const bid=(await a.query(submitSql,args())).rows[0].bid_id;
+  await actor(a,clientId); await actor(b,clientId);
+  await a.query('begin');
+  await a.query('select * from select_job_worker($1,$2)',[jobId,bid]);
+  const pending=outcome(b.query('select cancel_job($1)',[jobId]));
+  await waitForLock(b); await a.query('commit');
+  assert.equal((await pending).error?.message,'invalid_state');
+  const j=(await db.query('select status,selected_worker_id from jobs where id=$1',[jobId])).rows[0];
+  assert.deepEqual(j,{status:'in_progress',selected_worker_id:workerId});
+  assert.equal((await db.query('select status from bids where id=$1',[bid])).rows[0].status,'selected');
+});
+
+test('concurrent completions for one worker preserve both reviews and aggregate rating', async () => {
+  const a=await connect(), b=await connect();
+  await actor(a);
+  const first=(await a.query(submitSql,args())).rows[0].bid_id;
+  const second=(await a.query(submitSql,args(secondJobId))).rows[0].bid_id;
+  await actor(a,clientId); await actor(b,clientId);
+  await a.query('select * from select_job_worker($1,$2)',[jobId,first]);
+  await b.query('select * from select_job_worker($1,$2)',[secondJobId,second]);
+  await a.query('begin'); await a.query('select * from complete_job($1,5,$2)',[jobId,'Great job']);
+  const pending=outcome(b.query('select * from complete_job($1,3,$2)',[secondJobId,'Good job']));
+  await waitForLock(b); await a.query('commit'); assert.ifError((await pending).error);
+  const row=(await db.query('select rating_avg,rating_count from profiles_worker where id=$1',[workerId])).rows[0];
+  assert.equal(Number(row.rating_avg),4); assert.equal(row.rating_count,2);
+  assert.equal((await db.query("select count(*)::int as n from notifications where type='job_completed'")).rows[0].n,2);
+});

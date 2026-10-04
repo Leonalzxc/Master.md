@@ -1,28 +1,16 @@
 'use server';
-
+import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
-import { createClient } from '@/lib/supabase/server';
-
-export async function cancelJob(jobId: string, locale: string) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('not_authenticated');
-
-  // Verify ownership and status
-  const { data: rawJob } = await supabase.from('jobs').select('client_id, status').eq('id', jobId).single();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const job = rawJob as any;
-  if (!job || job.client_id !== user.id) throw new Error('not_authorized');
-  if (job.status !== 'active') throw new Error('cannot_cancel');
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase.from('jobs') as any)
-    .update({ status: 'cancelled' })
-    .eq('id', jobId)
-    .eq('client_id', user.id); // TOCTOU guard: double-check ownership in UPDATE
-
-  if (error) throw new Error(error.message);
-
-  revalidatePath(`/${locale}/account/client`);
-  revalidatePath(`/${locale}/jobs`);
+import { runWorkflow } from '@/lib/supabase/workflow';
+import type { WorkflowResult } from '@/lib/workflow';
+export async function cancelJob(jobId: string, locale: string): Promise<WorkflowResult<boolean>> {
+  if (!z.string().uuid().safeParse(jobId).success || !['ru','ro'].includes(locale)) return { ok:false,error:'invalid_input' };
+  const result=await runWorkflow<boolean>('cancel_job',{ p_job_id:jobId });
+  if (result.ok) {
+    revalidatePath(`/${locale}/jobs/${jobId}`);
+    revalidatePath(`/${locale}/account/client`);
+    revalidatePath(`/${locale}/account/worker`);
+    revalidatePath(`/${locale}/jobs`);
+  }
+  return result;
 }
