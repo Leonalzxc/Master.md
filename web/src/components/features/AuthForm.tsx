@@ -1,15 +1,17 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { normalizeMoldovaPhone } from '@/lib/auth-phone';
+import { updateProfile } from '@/app/actions/updateProfile';
 import { useRouter } from 'next/navigation';
+import { safeAuthNext } from '@/lib/auth-path';
 import { createClient } from '@/lib/supabase/client';
-import { CATEGORY_LABELS_RU, CATEGORY_ICONS, type Category } from '@/lib/mock/data';
+import { CATEGORY_LABELS_RU, CATEGORY_LABELS_RO, CATEGORY_ICONS, CITIES, AREAS as CITY_AREAS, type Category } from '@/lib/mock/data';
 
 type Screen = 'phone' | 'otp' | 'name' | 'role' | 'worker-cats' | 'worker-area' | 'success';
 type Role = 'client' | 'worker';
 
 const ALL_CATEGORIES = Object.keys(CATEGORY_LABELS_RU) as Category[];
-const AREAS = ['Центр', 'Северная', 'Южная', 'Молодёжная', 'Флора', 'Пэмынтень', 'Весь город'];
 
 export default function AuthForm({ locale, next }: { locale: string; next?: string }) {
   const [screen, setScreen] = useState<Screen>('phone');
@@ -18,18 +20,26 @@ export default function AuthForm({ locale, next }: { locale: string; next?: stri
   const [name, setName]     = useState('');
   const [role, setRole]     = useState<Role | null>(null);
   const [cats, setCats]     = useState<Category[]>([]);
+  const [city, setCity]     = useState<string>(CITIES[0]);
   const [areas, setAreas]   = useState<string[]>([]);
   const [bio, setBio]       = useState('');
   const [expYrs, setExpYrs] = useState('');
 
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState('');
-  const [userId, setUserId]   = useState('');
-
-  const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const [resendAt, setResendAt] = useState(0);
+  const [now, setNow] = useState(0);
+  const requestBusy = useRef(false);
   const router  = useRouter();
 
-  const fullPhone = phone.startsWith('+') ? phone : `+373${phone.replace(/^0+/, '')}`;
+  const fullPhone = normalizeMoldovaPhone(phone);
+  const retryIn = Math.max(0, Math.ceil((resendAt - now) / 1000));
+  const networkError = locale === 'ru' ? 'Нет соединения. Повторите попытку.' : 'Conexiune indisponibilă. Reîncercați.';
+  useEffect(() => {
+    if (!resendAt) return;
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [resendAt]);
 
   /* ── helpers ─────────────────────────────────────────────── */
   function toggleCat(cat: Category) {
@@ -41,33 +51,43 @@ export default function AuthForm({ locale, next }: { locale: string; next?: stri
 
   /* ── step 1: send OTP ───────────────────────────────────── */
   async function sendOtp() {
-    if (phone.replace(/\D/g, '').length < 8) {
-      setError(locale === 'ru' ? 'Введите корректный номер' : 'Introduceți un număr valid'); return;
-    }
+    if (requestBusy.current || Date.now() < resendAt) return;
+    if (!fullPhone) { setError(locale === 'ru' ? 'Введите 8 цифр молдавского номера' : 'Introduceți cele 8 cifre ale numărului din Moldova'); return; }
+    requestBusy.current = true;
     setError(''); setLoading(true);
-    const { error: err } = await createClient().auth.signInWithOtp({ phone: fullPhone });
-    setLoading(false);
-    if (err) { setError(err.message); return; }
-    setScreen('otp');
+    try {
+      const { error: err } = await createClient().auth.signInWithOtp({ phone: fullPhone });
+      if (err) { setError(locale === 'ru' ? 'Не удалось отправить SMS. Проверьте номер и повторите позже.' : 'SMS-ul nu a fost trimis. Verificați numărul și reîncercați mai târziu.'); return; }
+      const sentAt = Date.now(); setNow(sentAt); setResendAt(sentAt + 60000);
+      setScreen('otp');
+    } catch { setError(networkError); }
+    finally { requestBusy.current = false; setLoading(false); }
   }
 
   /* ── step 2: verify OTP ─────────────────────────────────── */
   async function verifyOtp() {
-    if (otp.length !== 6) {
+    if (requestBusy.current) return;
+    if (!fullPhone || !/^\d{6}$/.test(otp)) {
       setError(locale === 'ru' ? 'Введите 6-значный код' : 'Introduceți codul de 6 cifre'); return;
     }
+    requestBusy.current = true;
     setError(''); setLoading(true);
+    try {
     const supabase = createClient();
     const { data, error: err } = await supabase.auth.verifyOtp({ phone: fullPhone, token: otp, type: 'sms' });
-    if (err) { setError(err.message); setLoading(false); return; }
+    if (err) { setError(locale === 'ru' ? 'Код неверен или истёк. Запросите новый код.' : 'Cod incorect sau expirat. Solicitați un cod nou.'); return; }
 
     const uid = data.user?.id;
     if (!uid) { setError('Ошибка авторизации'); setLoading(false); return; }
-    setUserId(uid);
 
     // Check if profile is complete
-    const { data: existing } = await supabase
-      .from('profiles').select('id, name, role').eq('id', uid).single();
+    const { data: existing, error: readError } = await supabase
+      .from('profiles').select('id, name, role').eq('id', uid).maybeSingle();
+    if (readError) {
+      setError(locale === 'ru' ? 'Не удалось загрузить профиль. Повторите попытку.' : 'Profilul nu a putut fi încărcat. Reîncercați.');
+      setLoading(false);
+      return;
+    }
 
     const profile = existing as { id: string; name?: string; role?: string } | null;
 
@@ -75,26 +95,33 @@ export default function AuthForm({ locale, next }: { locale: string; next?: stri
       // Returning user — go to account
       setLoading(false);
       setScreen('success');
-      const safeNext = next?.startsWith('/') ? next : `/${locale}/account`;
+      const safeNext = safeAuthNext(next,locale);
       setTimeout(() => { router.push(safeNext); router.refresh(); }, 500);
     } else {
       // New user — start registration flow
       if (!profile) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (supabase.from('profiles') as any).insert({
+        const { error: insertError } = await (supabase.from('profiles') as any).insert({
           id: uid,
           phone: data.user?.phone ?? fullPhone,
           role: 'client',
         });
+        if (insertError && insertError.code !== '23505') {
+          setError(locale === 'ru' ? 'Не удалось создать профиль. Повторите попытку.' : 'Profilul nu a putut fi creat. Reîncercați.');
+          setLoading(false);
+          return;
+        }
       }
       setLoading(false);
       setScreen('name');
     }
+    } catch { setError(networkError); }
+    finally { requestBusy.current = false; setLoading(false); }
   }
 
   /* ── step 3: save name ──────────────────────────────────── */
   function submitName() {
-    if (!name.trim()) { setError(locale === 'ru' ? 'Введите ваше имя' : 'Introduceți numele'); return; }
+    if (name.trim().length < 2 || name.trim().length > 80) { setError(locale === 'ru' ? 'Введите ваше имя' : 'Introduceți numele'); return; }
     setError(''); setScreen('role');
   }
 
@@ -106,16 +133,19 @@ export default function AuthForm({ locale, next }: { locale: string; next?: stri
   }
 
   /* ── finish client ──────────────────────────────────────── */
-  async function finishClient() {
-    setLoading(true);
-    setError('');
-    const supabase = createClient();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: profileErr } = await (supabase.from('profiles') as any).update({ name: name.trim(), role: 'client' }).eq('id', userId);
-    if (profileErr) { setError(profileErr.message); setLoading(false); return; }
-    setScreen('success');
-    setTimeout(() => { router.push(`/${locale}/account/client`); router.refresh(); }, 500);
+  async function saveRegistration(chosenRole: Role) {
+    if (requestBusy.current) return;
+    requestBusy.current = true; setLoading(true); setError('');
+    try {
+      await updateProfile({ name, city, role: chosenRole, bio, categories: chosenRole === 'worker' ? cats : [],
+        areas: chosenRole === 'worker' ? areas : [], experience_yrs: expYrs, viber: '', telegram: '', whatsapp: '',
+        portfolio_photos: [], locale });
+      setScreen('success');
+      router.push(safeAuthNext(next, locale)); router.refresh();
+    } catch { setError(locale === 'ru' ? 'Анкета не сохранена. Проверьте данные и повторите попытку.' : 'Profilul nu a fost salvat. Verificați datele și reîncercați.'); }
+    finally { requestBusy.current = false; setLoading(false); }
   }
+  async function finishClient() { await saveRegistration('client'); }
 
   /* ── step 5 (worker): categories ───────────────────────── */
   function submitCats() {
@@ -126,44 +156,7 @@ export default function AuthForm({ locale, next }: { locale: string; next?: stri
   }
 
   /* ── step 6 (worker): area + bio → finish ───────────────── */
-  async function finishWorker() {
-    setLoading(true);
-    setError('');
-    const supabase = createClient();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: profileErr } = await (supabase.from('profiles') as any).update({ name: name.trim(), role: 'worker', city: 'Бельцы' }).eq('id', userId);
-    if (profileErr) { setError(profileErr.message); setLoading(false); return; }
-    // IMPORTANT: do NOT include system fields (is_pro, verified, bid_credits,
-    // rating_avg, rating_count) — managed by DB triggers/admin, not here.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: workerErr } = await (supabase.from('profiles_worker') as any).upsert({
-      id: userId,
-      categories: cats,
-      areas: areas.length > 0 ? areas : ['Весь город'],
-      bio: bio.trim() || null,
-      experience_yrs: expYrs ? parseInt(expYrs) : null,
-    }, { onConflict: 'id', ignoreDuplicates: false });
-    if (workerErr) { setError(workerErr.message); setLoading(false); return; }
-    setScreen('success');
-    setTimeout(() => { router.push(`/${locale}/account/worker`); router.refresh(); }, 500);
-  }
-
-  /* ── OTP input helpers ───────────────────────────────────── */
-  function handleOtpChange(i: number, val: string) {
-    const digit = val.replace(/\D/g, '').slice(-1);
-    const arr = otp.split('');
-    arr[i] = digit;
-    const next6 = arr.join('').slice(0, 6);
-    setOtp(next6);
-    if (digit && i < 5) otpRefs.current[i + 1]?.focus();
-  }
-  function handleOtpKey(i: number, e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === 'Backspace' && !otp[i] && i > 0) otpRefs.current[i - 1]?.focus();
-  }
-  function handleOtpPaste(e: React.ClipboardEvent) {
-    const digits = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
-    if (digits.length === 6) { setOtp(digits); otpRefs.current[5]?.focus(); }
-  }
+  async function finishWorker() { await saveRegistration('worker'); }
 
   /* ── progress indicator ─────────────────────────────────── */
   const STEPS: Screen[] = ['phone', 'otp', 'name', 'role', 'worker-cats', 'worker-area'];
@@ -224,8 +217,8 @@ export default function AuthForm({ locale, next }: { locale: string; next?: stri
             </p>
           </div>
           {error && <p className="text-sm" style={{ color: 'var(--danger)' }}>{error}</p>}
-          <button onClick={sendOtp} className="btn-primary w-full" style={{ height: 48, fontSize: 15, justifyContent: 'center' }} disabled={loading}>
-            {loading ? (locale === 'ru' ? 'Отправка...' : 'Se trimite...') : (locale === 'ru' ? 'Получить код →' : 'Obține codul →')}
+          <button onClick={sendOtp} className="btn-primary w-full" style={{ height: 48, fontSize: 15, justifyContent: 'center' }} disabled={loading || retryIn > 0}>
+            {loading ? (locale === 'ru' ? 'Отправка...' : 'Se trimite...') : (locale === 'ru' ? `Получить код${retryIn > 0 ? ` (${retryIn} s)` : ' →'}` : `Obține codul${retryIn > 0 ? ` (${retryIn} s)` : ' →'}`)}
           </button>
         </>
       )}
@@ -235,7 +228,7 @@ export default function AuthForm({ locale, next }: { locale: string; next?: stri
         <>
           <div className="flex flex-col gap-1">
             <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-              {locale === 'ru' ? `Код отправлен на +373 ${phone}` : `Codul a fost trimis la +373 ${phone}`}
+              {locale === 'ru' ? `Код отправлен на ${fullPhone}` : `Codul a fost trimis la ${fullPhone}`}
             </p>
             <button onClick={() => { setScreen('phone'); setOtp(''); setError(''); }}
               className="text-xs w-fit" style={{ color: 'var(--accent)', textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer' }}>
@@ -244,19 +237,11 @@ export default function AuthForm({ locale, next }: { locale: string; next?: stri
           </div>
           <div className="flex flex-col gap-1.5">
             <label className="field-label">{locale === 'ru' ? 'Код из SMS' : 'Cod din SMS'}</label>
-            <div className="flex gap-2 justify-between" onPaste={handleOtpPaste}>
-              {Array.from({ length: 6 }).map((_, i) => (
-                <input key={i} ref={(el) => { otpRefs.current[i] = el; }}
-                  type="text" inputMode="numeric" maxLength={1}
-                  value={otp[i] ?? ''}
-                  onChange={(e) => handleOtpChange(i, e.target.value)}
-                  onKeyDown={(e) => handleOtpKey(i, e)}
-                  className="text-center font-bold rounded-xl border"
-                  style={{ width: 44, height: 52, fontSize: 22, background: 'var(--surface-2)',
-                    borderColor: otp[i] ? 'var(--accent)' : 'var(--glass-border)', color: 'var(--text)', outline: 'none' }}
-                  autoFocus={i === 0} />
-              ))}
-            </div>
+            <input id="sms-code" type="text" inputMode="numeric" autoComplete="one-time-code"
+              maxLength={6} value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              onKeyDown={(e) => e.key === 'Enter' && verifyOtp()}
+              className="field-input text-center" aria-label={locale === 'ru' ? 'Код из SMS' : 'Cod din SMS'}
+              style={{ height: 52, fontSize: 24, letterSpacing: '0.35em' }} autoFocus />
           </div>
           {error && <p className="text-sm" style={{ color: 'var(--danger)' }}>{error}</p>}
           <button onClick={verifyOtp} className="btn-primary w-full" style={{ height: 48, fontSize: 15, justifyContent: 'center' }}
@@ -265,9 +250,9 @@ export default function AuthForm({ locale, next }: { locale: string; next?: stri
           </button>
           <p className="text-xs text-center" style={{ color: 'var(--text-muted)' }}>
             {locale === 'ru' ? 'Не получили SMS?' : 'Nu ați primit SMS-ul?'}{' '}
-            <button onClick={() => { setOtp(''); sendOtp(); }}
+            <button disabled={loading || retryIn > 0} onClick={() => { setOtp(''); sendOtp(); }}
               style={{ color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 'inherit', textDecoration: 'underline' }}>
-              {locale === 'ru' ? 'Отправить снова' : 'Retrimiteți'}
+              {retryIn > 0 ? `${locale === 'ru' ? 'Повтор через' : 'Reîncercați în'} ${retryIn} s` : (locale === 'ru' ? 'Отправить снова' : 'Retrimiteți')}
             </button>
           </p>
         </>
@@ -366,7 +351,7 @@ export default function AuthForm({ locale, next }: { locale: string; next?: stri
                     fontWeight: active ? 600 : 400,
                   }}>
                   <span>{CATEGORY_ICONS[cat]}</span>
-                  <span>{CATEGORY_LABELS_RU[cat]}</span>
+                  <span>{(locale === 'ro' ? CATEGORY_LABELS_RO : CATEGORY_LABELS_RU)[cat]}</span>
                 </button>
               );
             })}
@@ -391,14 +376,19 @@ export default function AuthForm({ locale, next }: { locale: string; next?: stri
           </div>
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
-              <label className="field-label">{locale === 'ru' ? 'Опыт работы (лет)' : 'Experiență (ani)'}</label>
-              <input type="number" min={0} max={60} className="field-input" placeholder="5"
-                value={expYrs} onChange={(e) => setExpYrs(e.target.value)} />
+              <label className="field-label">{locale === 'ru' ? 'Город работы *' : 'Orașul de lucru *'}</label>
+              <select
+                className="field-input"
+                value={city}
+                onChange={(e) => { setCity(e.target.value); setAreas([]); }}
+              >
+                {CITIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="field-label">{locale === 'ru' ? 'Районы Бельц' : 'Zonele din Bălți'}</label>
+              <label className="field-label">{locale === 'ru' ? 'Районы (необязательно)' : 'Zone (opțional)'}</label>
               <div className="flex flex-wrap gap-1.5">
-                {AREAS.map((area) => {
+                {(CITY_AREAS[city] ?? ['Центр', 'Весь город']).map((area) => {
                   const active = areas.includes(area);
                   return (
                     <button key={area} onClick={() => toggleArea(area)}
@@ -414,6 +404,11 @@ export default function AuthForm({ locale, next }: { locale: string; next?: stri
                   );
                 })}
               </div>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="field-label">{locale === 'ru' ? 'Опыт работы (лет)' : 'Experiență (ani)'}</label>
+              <input type="number" min={0} max={60} className="field-input" placeholder="5"
+                value={expYrs} onChange={(e) => setExpYrs(e.target.value)} />
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="field-label">

@@ -19,31 +19,23 @@ const outfit = Outfit({
   display: 'swap',
 });
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://master.md';
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://master-md.vercel.app';
 
 export const metadata: Metadata = {
   title: {
     template: '%s | MASTER Moldova',
     default: 'MASTER — Найдите мастера в Молдове',
   },
-  description: 'Биржа мастеров для ремонта и строительства в Бельцах и Молдове. Опубликуйте заявку и получите отклики за 15 минут.',
+  description: 'Бесплатный пилот поиска мастеров и ремонтных заказов в Бельцах. Заявки, предложения и отзывы на RU/RO.',
   metadataBase: new URL(SITE_URL),
   openGraph: {
     type: 'website',
     siteName: 'MASTER Moldova',
     locale: 'ru_MD',
-    images: [
-      {
-        url: '/og-default.png',
-        width: 1200,
-        height: 630,
-        alt: 'MASTER — Биржа мастеров Молдовы',
-      },
-    ],
+
   },
   twitter: {
-    card: 'summary_large_image',
-    site: '@mastermd',
+    card: 'summary',
   },
   robots: {
     index: true,
@@ -51,7 +43,6 @@ export const metadata: Metadata = {
     googleBot: { index: true, follow: true, 'max-image-preview': 'large' },
   },
   alternates: {
-    canonical: SITE_URL,
     languages: {
       'ru': `${SITE_URL}/ru`,
       'ro': `${SITE_URL}/ro`,

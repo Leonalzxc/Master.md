@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
-import { CATEGORY_LABELS_RU, CATEGORY_ICONS, CITIES, AREAS, type Category } from '@/lib/mock/data';
+import { updateProfile } from '@/app/actions/updateProfile';
+import { CATEGORY_LABELS_RU, CATEGORY_LABELS_RO, CATEGORY_ICONS, CITIES, AREAS, type Category } from '@/lib/mock/data';
 const ALL_CATEGORIES = Object.keys(CATEGORY_LABELS_RU) as Category[];
 
 type Role = 'client' | 'worker';
@@ -17,17 +17,15 @@ interface State {
   areas: string[];
   bio: string;
   experienceYrs: string;
-  docFile: File | null;
 }
 
-export default function OnboardingWizard({ locale, userId }: { locale: string; userId: string }) {
+export default function OnboardingWizard({ locale }: { locale: string }) {
   const [step, setStep] = useState<Step>(1);
   const [state, setState] = useState<State>({
-    name: '', role: null, categories: [], city: CITIES[0], areas: [], bio: '', experienceYrs: '', docFile: null,
+    name: '', role: null, categories: [], city: CITIES[0], areas: [], bio: '', experienceYrs: '',
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const fileRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
   const set = (patch: Partial<State>) => setState((s) => ({ ...s, ...patch }));
@@ -41,60 +39,16 @@ export default function OnboardingWizard({ locale, userId }: { locale: string; u
     set({ areas: state.areas.includes(area) ? state.areas.filter((a) => a !== area) : [...state.areas, area] });
   }
 
-  async function finish(skipDoc = false) {
-    setError('');
-    setLoading(true);
-    const supabase = createClient();
-
+  async function finish() {
+    if (loading || !state.role) return;
+    setError(''); setLoading(true);
     try {
-      // Update profile
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const profileQ = supabase.from('profiles') as any;
-      const { error: profileErr } = await profileQ.update({
-        name: state.name.trim(),
-        role: state.role!,
-        city: state.city || null,
-      }).eq('id', userId);
-      if (profileErr) throw profileErr;
-
-      // If worker — create profiles_worker entry
-      if (state.role === 'worker') {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const workerQ = supabase.from('profiles_worker') as any;
-        // IMPORTANT: do NOT include system fields (is_pro, verified, bid_credits,
-        // rating_avg, rating_count) — managed by DB triggers/admin, not here.
-        const { error: workerErr } = await workerQ.upsert({
-          id: userId,
-          categories: state.categories,
-          areas: state.areas,
-          bio: state.bio.trim() || null,
-          experience_yrs: state.experienceYrs ? parseInt(state.experienceYrs) : null,
-        }, { onConflict: 'id', ignoreDuplicates: false });
-        if (workerErr) throw workerErr;
-
-        // Upload verification doc if provided
-        if (!skipDoc && state.docFile) {
-          const ext = state.docFile.name.split('.').pop() ?? 'jpg';
-          const path = `${userId}/id.${ext}`;
-          const { error: uploadErr } = await supabase.storage
-            .from('verification-docs')
-            .upload(path, state.docFile, { upsert: true });
-          if (uploadErr) throw uploadErr;
-
-          // Mark as submitted
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          await (supabase.from('profiles_worker') as any).update({
-            verification_submitted_at: new Date().toISOString(),
-          }).eq('id', userId);
-        }
-      }
-
-      router.push(`/${locale}/account`);
-      router.refresh();
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Ошибка сохранения');
-      setLoading(false);
-    }
+      await updateProfile({ name: state.name, city: state.city, role: state.role, categories: state.categories,
+        areas: state.areas, bio: state.bio, experience_yrs: state.experienceYrs,
+        viber: '', telegram: '', whatsapp: '', portfolio_photos: [], locale });
+      router.push(`/${locale}/account`); router.refresh();
+    } catch { setError(locale === 'ru' ? 'Анкета не сохранена. Проверьте данные и повторите.' : 'Profilul nu a fost salvat. Verificați datele și reîncercați.'); }
+    finally { setLoading(false); }
   }
 
   function next() {
@@ -206,7 +160,7 @@ export default function OnboardingWizard({ locale, userId }: { locale: string; u
                     }}
                   >
                     <span>{CATEGORY_ICONS[cat]}</span>
-                    <span>{CATEGORY_LABELS_RU[cat]}</span>
+                    <span>{(locale === 'ro' ? CATEGORY_LABELS_RO : CATEGORY_LABELS_RU)[cat]}</span>
                   </button>
                 );
               })}
@@ -273,54 +227,13 @@ export default function OnboardingWizard({ locale, userId }: { locale: string; u
           </>
         )}
 
-        {/* Step 5: Verification doc (worker only) */}
         {step === 5 && (
-          <>
-            <div>
-              <h2 className="font-bold text-xl mb-1" style={{ fontFamily: 'var(--font-display)', color: 'var(--text)' }}>
-                {locale === 'ru' ? 'Верификация' : 'Verificare'}
-              </h2>
-              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-                {locale === 'ru'
-                  ? 'Загрузите фото удостоверения или профессионального сертификата. Верифицированные мастера получают больше заказов.'
-                  : 'Încărcați o fotografie a actului de identitate sau a certificatului profesional. Meșterii verificați primesc mai multe comenzi.'}
-              </p>
-            </div>
-
-            <div
-              onClick={() => fileRef.current?.click()}
-              className="rounded-2xl border-2 border-dashed flex flex-col items-center justify-center gap-3 cursor-pointer transition-all"
-              style={{
-                padding: '32px 16px',
-                borderColor: state.docFile ? 'var(--success)' : 'var(--glass-border)',
-                background: state.docFile ? 'rgba(22,163,74,.04)' : 'var(--surface-2)',
-              }}
-            >
-              {state.docFile ? (
-                <>
-                  <span className="text-3xl">✅</span>
-                  <span className="text-sm font-medium" style={{ color: 'var(--success)' }}>{state.docFile.name}</span>
-                  <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{locale === 'ru' ? 'Нажмите чтобы заменить' : 'Apăsați pentru a înlocui'}</span>
-                </>
-              ) : (
-                <>
-                  <span className="text-3xl">📄</span>
-                  <span className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
-                    {locale === 'ru' ? 'Загрузить документ' : 'Încarcă document'}
-                  </span>
-                  <span className="text-xs text-center" style={{ color: 'var(--text-muted)' }}>
-                    {locale === 'ru' ? 'Паспорт, удостоверение или сертификат · JPEG, PNG, PDF · до 10 МБ' : 'Pașaport, buletin sau certificat · JPEG, PNG, PDF · max 10 MB'}
-                  </span>
-                </>
-              )}
-            </div>
-            <input ref={fileRef} type="file" className="hidden" accept="image/*,.pdf"
-              onChange={(e) => set({ docFile: e.target.files?.[0] ?? null })} />
-
-            <div className="rounded-xl p-3 text-xs" style={{ background: 'var(--accent-dim)', color: 'var(--accent)' }}>
-              🛡️ {locale === 'ru' ? 'Документ виден только администраторам платформы' : 'Documentul este vizibil doar administratorilor platformei'}
-            </div>
-          </>
+          <div>
+            <h2 className="font-bold text-xl mb-2">{locale === 'ru' ? 'Анкета готова' : 'Profilul este pregătit'}</h2>
+            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+              {locale === 'ru' ? 'В пилоте паспорт загружать не нужно. После сохранения можно подать профиль на ручную проверку. Она не подтверждает квалификацию и не гарантирует качество работ.' : 'Pentru pilot nu este necesar actul de identitate. După salvare puteți solicita examinarea profilului. Aceasta nu certifică calificarea sau calitatea lucrărilor.'}
+            </p>
+          </div>
         )}
 
         {/* Error */}
@@ -341,14 +254,9 @@ export default function OnboardingWizard({ locale, userId }: { locale: string; u
                 : (locale === 'ru' ? 'Далее →' : 'Înainte →'))}
             </button>
           ) : (
-            <div className="flex-1 flex flex-col gap-2">
-              <button onClick={() => finish(false)} className="btn-primary w-full" style={{ height: 48, fontSize: 15, justifyContent: 'center' }} disabled={loading || !state.docFile}>
-                {loading ? (locale === 'ru' ? 'Сохранение...' : 'Se salvează...') : (locale === 'ru' ? 'Отправить на верификацию →' : 'Trimite pentru verificare →')}
-              </button>
-              <button onClick={() => finish(true)} className="btn-secondary w-full text-sm" style={{ height: 38, justifyContent: 'center' }} disabled={loading}>
-                {locale === 'ru' ? 'Пропустить, войти без верификации' : 'Omite, intră fără verificare'}
-              </button>
-            </div>
+            <button onClick={finish} className="btn-primary flex-1" style={{ height: 48 }} disabled={loading}>
+              {loading ? '...' : (locale === 'ru' ? 'Сохранить и начать →' : 'Salvează și începe →')}
+            </button>
           )}
         </div>
       </div>

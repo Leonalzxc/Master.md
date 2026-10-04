@@ -1,0 +1,34 @@
+kind,target,name,details
+function,public,is_admin,p_uid uuid:definer=true:config={search_path=public}
+function,public,spend_bid_credit,p_worker_id uuid:definer=true:config={search_path=public}
+function,public,worker_has_bid_on_job,"p_job_id uuid, p_worker_id uuid:definer=true:config={search_path=public}"
+policy,bids,bids_select_public,SELECT:{public}:true:
+policy,bids,bids_worker_insert,"INSERT:{public}::((worker_id = auth.uid()) AND (EXISTS ( SELECT 1
+   FROM profiles_worker pw
+  WHERE ((pw.id = auth.uid()) AND (pw.completed_at IS NOT NULL)))))"
+policy,bids,client_update_bids_on_own_jobs,"UPDATE:{public}:(EXISTS ( SELECT 1
+   FROM jobs
+  WHERE ((jobs.id = bids.job_id) AND (jobs.client_id = auth.uid())))):"
+policy,jobs,jobs_active_read,SELECT:{public}:((status = 'active'::text) OR (client_id = auth.uid())):
+policy,jobs,jobs_admin_read,SELECT:{public}:is_admin(auth.uid()):
+policy,jobs,jobs_admin_update,UPDATE:{public}:is_admin(auth.uid()):
+policy,jobs,jobs_own_insert,INSERT:{public}::(client_id = auth.uid())
+policy,jobs,jobs_own_update,UPDATE:{public}:(client_id = auth.uid()):
+policy,jobs,jobs_worker_bid_read,"SELECT:{public}:worker_has_bid_on_job(id, auth.uid()):"
+policy,jobs,jobs_worker_read,"SELECT:{public}:(status = ANY (ARRAY['active'::text, 'in_progress'::text, 'done'::text])):"
+policy,notifications,notif_insert_any,INSERT:{public}::true
+policy,notifications,notif_own_read,SELECT:{public}:(user_id = auth.uid()):
+policy,notifications,notif_own_update,UPDATE:{public}:(user_id = auth.uid()):
+policy,profiles,profiles_admin_read,SELECT:{public}:is_admin(auth.uid()):
+policy,profiles,profiles_admin_update,UPDATE:{public}:is_admin(auth.uid()):
+policy,profiles,profiles_own_insert,INSERT:{public}::true
+policy,profiles,profiles_own_update,UPDATE:{public}:(id = auth.uid()):
+policy,profiles,profiles_public_read,SELECT:{public}:true:
+policy,profiles_worker,worker_own_write,ALL:{public}:(id = auth.uid()):
+policy,profiles_worker,worker_public_read,SELECT:{public}:true:
+policy,reviews,reviews_auth_insert,INSERT:{public}::(author_id = auth.uid())
+policy,reviews,reviews_public_read,SELECT:{public}:true:
+trigger,bids,trg_new_bid_notify,CREATE TRIGGER trg_new_bid_notify AFTER INSERT ON public.bids FOR EACH ROW EXECUTE FUNCTION notify_new_bid()
+trigger,jobs,trg_bid_accepted_notify,CREATE TRIGGER trg_bid_accepted_notify AFTER UPDATE ON public.jobs FOR EACH ROW EXECUTE FUNCTION notify_bid_accepted()
+trigger,jobs,trg_job_completed_notify,CREATE TRIGGER trg_job_completed_notify AFTER UPDATE ON public.jobs FOR EACH ROW EXECUTE FUNCTION notify_job_completed()
+trigger,jobs,trg_notify_workers_new_job,CREATE TRIGGER trg_notify_workers_new_job AFTER INSERT ON public.jobs FOR EACH ROW EXECUTE FUNCTION notify_workers_new_job()

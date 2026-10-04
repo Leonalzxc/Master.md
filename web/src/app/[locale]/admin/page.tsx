@@ -4,7 +4,8 @@ import Link from 'next/link';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import { createClient } from '@/lib/supabase/server';
-import { blockUser, unblockUser, blockJob, expireJobs, addCredits, approveWorker } from '@/app/actions/adminActions';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { blockUser, unblockUser, blockJob, expireJobs, approveVerification, rejectVerification, addCredits } from '@/app/actions/adminActions';
 import type { Profile, Job, ProfileWorker } from '@/lib/supabase/types';
 
 type Props = { params: Promise<{ locale: string }> };
@@ -24,33 +25,48 @@ export default async function AdminPage({ params }: Props) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   if ((rawMe as any)?.role !== 'admin') redirect(`/${locale}/account`);
 
-  // Fetch stats + data in parallel
+  const admin = createAdminClient();
+
+  // Fetch stats + data in parallel using admin client to bypass RLS
   const [
     { data: rawUsers, count: userCount },
     { data: rawJobs, count: jobCount },
-    { data: rawReviews, count: reviewCount },
-    { data: rawWorkerProfiles },
+    { count: reviewCount },
+    { data: rawPendingVerifications },
   ] = await Promise.all([
-    supabase.from('profiles').select('*', { count: 'exact' }).order('created_at', { ascending: false }).limit(100),
-    supabase.from('jobs').select('*', { count: 'exact' }).order('created_at', { ascending: false }).limit(100),
-    supabase.from('reviews').select('id', { count: 'exact' }),
+    admin.from('profiles').select('*', { count: 'exact' }).order('created_at', { ascending: false }).limit(100),
+    admin.from('jobs').select('*', { count: 'exact' }).order('created_at', { ascending: false }).limit(100),
+    admin.from('reviews').select('id', { count: 'exact', head: true }),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (supabase.from('profiles_worker') as any).select('id, bid_credits, verified, categories, verification_submitted_at'),
+    (admin.from('profiles_worker') as any)
+      .select('id, verification_submitted_at, categories, bio')
+      .not('verification_submitted_at', 'is', null)
+      .eq('verified', false)
+      .order('verification_submitted_at', { ascending: true }),
   ]);
 
   const users = (rawUsers ?? []) as Profile[];
   const jobs = (rawJobs ?? []) as Job[];
-  type WorkerMeta = Pick<ProfileWorker, 'bid_credits' | 'verified' | 'categories'> & { verification_submitted_at?: string | null };
-  // Map worker profiles by id for quick lookup
-  const workerMap = new Map<string, WorkerMeta>(
+
+  // Fetch bid_credits for all workers
+  const workerIds = users.filter((u) => u.role === 'worker').map((u) => u.id);
+  const { data: rawWorkerCredits } = workerIds.length > 0
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (rawWorkerProfiles ?? []).map((w: any) => [w.id, w])
+    ? await (admin.from('profiles_worker') as any).select('id, bid_credits').in('id', workerIds)
+    : { data: [] };
+  const creditsMap = new Map(
+    ((rawWorkerCredits ?? []) as { id: string; bid_credits: number }[]).map((pw) => [pw.id, pw.bid_credits])
   );
-  // Workers pending verification
-  const pendingVerifications = users.filter((u) => {
-    const wp = workerMap.get(u.id);
-    return wp && !wp.verified && wp.verification_submitted_at;
-  });
+
+  type PendingWorker = Pick<ProfileWorker, 'id' | 'verification_submitted_at' | 'categories' | 'bio'> & { name?: string };
+  const pendingVerifications = (rawPendingVerifications ?? []) as PendingWorker[];
+
+  // Enrich with profile name
+  const pendingIds = pendingVerifications.map((pw) => pw.id);
+  const rawPendingProfiles: Pick<Profile, 'id' | 'name' | 'city'>[] = pendingIds.length > 0
+    ? ((await admin.from('profiles').select('id, name, city').in('id', pendingIds)).data ?? []) as Pick<Profile, 'id' | 'name' | 'city'>[]
+    : [];
+  const profileMap = new Map(rawPendingProfiles.map((p) => [p.id, p]));
 
   const workerCount = users.filter((u) => u.role === 'worker').length;
   const clientCount = users.filter((u) => u.role === 'client').length;
@@ -95,70 +111,77 @@ export default async function AdminPage({ params }: Props) {
               { label: 'Всего заявок', value: jobCount ?? 0, icon: '📋' },
               { label: 'Активных заявок', value: activeJobs, icon: '✅' },
               { label: 'Отзывов', value: reviewCount ?? 0, icon: '⭐' },
-              { label: 'Просрочено', value: jobs.filter((j) => j.status === 'active' && !!(j as any).expires_at && new Date((j as any).expires_at) < new Date()).length, icon: '⏰', danger: true },
-            ].map(({ label, value, icon, danger }) => (
-              <div key={label} className="card p-5 text-center">
+              { label: 'На верификации', value: pendingVerifications.length, icon: '🔍', highlight: pendingVerifications.length > 0 },
+            ].map(({ label, value, icon, highlight }) => (
+              <div key={label} className="card p-5 text-center" style={highlight ? { border: '1px solid rgba(234,179,8,.3)' } : undefined}>
                 <div style={{ fontSize: 28, marginBottom: 4 }}>{icon}</div>
-                <div className="font-bold text-2xl" style={{ color: danger && value > 0 ? 'var(--danger)' : 'var(--text)' }}>{value}</div>
+                <div className="font-bold text-2xl" style={{ color: highlight ? '#ca8a04' : 'var(--text)' }}>{value}</div>
                 <div className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>{label}</div>
               </div>
             ))}
           </div>
 
-          {/* Quick actions */}
-          <div className="card p-4 mb-6 flex flex-wrap gap-3 items-center">
-            <span className="text-sm font-semibold" style={{ color: 'var(--text)' }}>⚡ Быстрые действия:</span>
-            <form action={expireJobs}>
-              <input type="hidden" name="locale" value={locale} />
-              <button type="submit" className="btn-secondary" style={{ height: 34, fontSize: 12, padding: '0 14px' }}>
-                ⏰ Закрыть просроченные заявки
-              </button>
-            </form>
-          </div>
+          <form action={expireJobs} className="card p-4 mb-6">
+            <input type="hidden" name="locale" value={locale} />
+            <button type="submit" className="btn-secondary">
+              {locale === 'ro' ? 'Închide cererile expirate' : 'Закрыть просроченные заявки'}
+            </button>
+          </form>
 
           {/* Pending verifications */}
           {pendingVerifications.length > 0 && (
-            <div className="card mb-6" style={{ border: '1.5px solid rgba(234,179,8,.35)' }}>
-              <div className="p-5 border-b flex items-center gap-3" style={{ borderColor: 'rgba(234,179,8,.2)', background: 'rgba(234,179,8,.04)' }}>
-                <span style={{ fontSize: 22 }}>⏳</span>
-                <div>
-                  <h2 className="font-semibold text-lg" style={{ color: 'var(--text)' }}>
-                    Верификация мастеров — {pendingVerifications.length} заявок
-                  </h2>
-                  <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                    Эти мастера подали заявку на верификацию и ожидают вашего подтверждения
-                  </p>
-                </div>
+            <div className="card mb-6" style={{ border: '1px solid rgba(234,179,8,.3)' }}>
+              <div className="p-5 border-b" style={{ borderColor: 'var(--glass-border)', background: 'rgba(234,179,8,.05)' }}>
+                <h2 className="font-semibold text-lg" style={{ color: 'var(--text)' }}>
+                  ✅ Запросы верификации ({pendingVerifications.length})
+                </h2>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                  Мастера, ожидающие верификации
+                </p>
               </div>
-              <div className="divide-y" style={{ borderColor: 'var(--glass-border)' }}>
-                {pendingVerifications.map((u) => {
-                  const wp = workerMap.get(u.id);
-                  const submittedAt = wp?.verification_submitted_at
-                    ? new Date(wp.verification_submitted_at).toLocaleDateString('ru-RU')
+              <div className="flex flex-col divide-y" style={{ borderColor: 'var(--glass-border)' }}>
+                {pendingVerifications.map((pw) => {
+                  const profile = profileMap.get(pw.id);
+                  const submittedAt = pw.verification_submitted_at
+                    ? new Date(pw.verification_submitted_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric' })
                     : '—';
                   return (
-                    <div key={u.id} className="p-4 flex items-center gap-4 flex-wrap" style={{ borderBottom: '1px solid var(--glass-border)' }}>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-sm" style={{ color: 'var(--text)' }}>
-                          <Link href={`/${locale}/workers/${u.id}`} style={{ color: 'var(--accent)', textDecoration: 'none' }}>
-                            {u.name ?? '—'}
-                          </Link>
-                        </p>
-                        <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                          {u.phone} · {u.city ?? '—'} · Подал: {submittedAt}
-                        </p>
-                      </div>
-                      <form action={approveWorker}>
-                        <input type="hidden" name="userId" value={u.id} />
-                        <input type="hidden" name="locale" value={locale} />
-                        <button
-                          type="submit"
-                          className="text-xs font-semibold px-4 py-2 rounded-lg border transition-all"
-                          style={{ borderColor: 'var(--success)', color: 'var(--success)', background: 'rgba(22,163,74,.06)', cursor: 'pointer' }}
+                    <div key={pw.id} className="p-4 flex items-center justify-between gap-4 flex-wrap">
+                      <div>
+                        <Link
+                          href={`/${locale}/workers/${pw.id}`}
+                          className="font-semibold text-sm"
+                          style={{ color: 'var(--accent)', textDecoration: 'none' }}
                         >
-                          ✓ Подтвердить верификацию
-                        </button>
-                      </form>
+                          {profile?.name ?? '—'}
+                        </Link>
+                        <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                          {profile?.city ?? '—'} · Подано: {submittedAt}
+                        </p>
+                        {pw.bio && (
+                          <p className="text-xs mt-1 line-clamp-2" style={{ color: 'var(--text-secondary)' }}>
+                            {pw.bio}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex gap-2 shrink-0">
+                        <form action={approveVerification}>
+                          <input type="hidden" name="workerId" value={pw.id} />
+                          <input type="hidden" name="locale" value={locale} />
+                          <button type="submit" className="text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all"
+                            style={{ borderColor: 'var(--success)', color: 'var(--success)', background: 'transparent', cursor: 'pointer' }}>
+                            ✓ Одобрить
+                          </button>
+                        </form>
+                        <form action={rejectVerification}>
+                          <input type="hidden" name="workerId" value={pw.id} />
+                          <input type="hidden" name="locale" value={locale} />
+                          <button type="submit" className="text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all"
+                            style={{ borderColor: 'var(--danger)', color: 'var(--danger)', background: 'transparent', cursor: 'pointer' }}>
+                            ✗ Отклонить
+                          </button>
+                        </form>
+                      </div>
                     </div>
                   );
                 })}
@@ -177,16 +200,13 @@ export default async function AdminPage({ params }: Props) {
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid var(--glass-border)', background: 'var(--surface-2)' }}>
-                    {['Имя', 'Телефон', 'Роль', 'Город', 'Зарегистрирован', 'Статус', 'Кредиты', 'Действия'].map((h) => (
+                    {['Имя', 'Телефон', 'Роль', 'Город', 'Кредиты', 'Зарегистрирован', 'Статус', 'Действие'].map((h) => (
                       <th key={h} style={{ padding: '10px 12px', textAlign: 'left', color: 'var(--text-muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {users.map((u) => {
-                    const wp = workerMap.get(u.id);
-                    const credits = wp?.bid_credits ?? null;
-                    return (
+                  {users.map((u) => (
                     <tr key={u.id} style={{ borderBottom: '1px solid var(--glass-border)', opacity: u.blocked_at ? 0.5 : 1 }}>
                       <td style={{ padding: '10px 12px', color: 'var(--text)', fontWeight: 500 }}>
                         <Link href={u.role === 'worker' ? `/${locale}/workers/${u.id}` : '#'} style={{ color: 'inherit', textDecoration: 'none' }}>
@@ -198,6 +218,32 @@ export default async function AdminPage({ params }: Props) {
                         <RoleBadge role={u.role} />
                       </td>
                       <td style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>{u.city ?? '—'}</td>
+                      <td style={{ padding: '10px 12px' }}>
+                        {u.role === 'worker' ? (
+                          <div className="flex items-center gap-2">
+                            <span
+                              className="text-xs font-bold px-2 py-0.5 rounded-full"
+                              style={{
+                                background: (creditsMap.get(u.id) ?? 0) > 0 ? 'rgba(14,165,233,.12)' : 'rgba(239,68,68,.1)',
+                                color: (creditsMap.get(u.id) ?? 0) > 0 ? 'var(--accent)' : 'var(--danger)',
+                              }}
+                            >
+                              {creditsMap.get(u.id) ?? 0}
+                            </span>
+                            <form action={addCredits} className="flex items-center gap-1">
+                              <input type="hidden" name="userId" value={u.id} />
+                              <input type="hidden" name="amount" value="10" />
+                              <input type="hidden" name="locale" value={locale} />
+                              <button type="submit" className="text-xs font-semibold px-2 py-0.5 rounded-lg border transition-all"
+                                style={{ borderColor: 'var(--accent)', color: 'var(--accent)', background: 'transparent', cursor: 'pointer' }}>
+                                +10
+                              </button>
+                            </form>
+                          </div>
+                        ) : (
+                          <span style={{ color: 'var(--text-muted)' }}>—</span>
+                        )}
+                      </td>
                       <td style={{ padding: '10px 12px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                         {new Date(u.created_at).toLocaleDateString('ru-RU')}
                       </td>
@@ -210,37 +256,6 @@ export default async function AdminPage({ params }: Props) {
                           <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: 'rgba(22,163,74,.1)', color: 'var(--success)' }}>
                             ✓ Активен
                           </span>
-                        )}
-                      </td>
-                      {/* Credits — only meaningful for workers */}
-                      <td style={{ padding: '10px 12px' }}>
-                        {u.role === 'worker' && credits !== null ? (
-                          <div className="flex items-center gap-2">
-                            <span
-                              className="font-bold text-sm"
-                              style={{ color: credits > 0 ? 'var(--accent)' : 'var(--danger)' }}
-                            >
-                              💳 {credits}
-                            </span>
-                            <form action={addCredits} style={{ display: 'flex', gap: 4 }}>
-                              <input type="hidden" name="userId" value={u.id} />
-                              <input type="hidden" name="locale" value={locale} />
-                              {[5, 10, 25].map((amt) => (
-                                <button
-                                  key={amt}
-                                  type="submit"
-                                  name="amount"
-                                  value={String(amt)}
-                                  className="text-xs font-semibold px-2 py-1 rounded-lg border"
-                                  style={{ borderColor: 'var(--accent)', color: 'var(--accent)', background: 'transparent', cursor: 'pointer', lineHeight: 1 }}
-                                >
-                                  +{amt}
-                                </button>
-                              ))}
-                            </form>
-                          </div>
-                        ) : (
-                          <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>—</span>
                         )}
                       </td>
                       <td style={{ padding: '10px 12px' }}>
@@ -267,8 +282,7 @@ export default async function AdminPage({ params }: Props) {
                         )}
                       </td>
                     </tr>
-                    );
-                  })}
+                  ))}
                 </tbody>
               </table>
             </div>

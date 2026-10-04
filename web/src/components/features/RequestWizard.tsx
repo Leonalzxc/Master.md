@@ -1,7 +1,10 @@
 'use client';
 
-import { useState } from 'react';
-import { CATEGORY_LABELS_RU, CATEGORY_ICONS, CITIES, type Category } from '@/lib/mock/data';
+import { useRouter } from 'next/navigation';
+import { isPilotLocation, PILOT_CITY } from '@/lib/pilot';
+import { jobErrorText, type JobInput } from '@/lib/jobs';
+import { useRef, useState } from 'react';
+import { CATEGORY_LABELS_RU, CATEGORY_LABELS_RO, CATEGORY_ICONS, CITIES, type Category } from '@/lib/mock/data';
 import { createJob } from '@/app/actions/createJob';
 import LocationPicker from './LocationPicker';
 import PhotoUpload from './PhotoUpload';
@@ -34,14 +37,22 @@ const INITIAL: FormData = {
   budget: '',
 };
 
-interface Props { locale: string }
+interface Props { locale: string; initialCategory?: Category }
 
-export default function RequestWizard({ locale }: Props) {
+export default function RequestWizard({ locale, initialCategory }: Props) {
+  const router = useRouter();
   const [step, setStep] = useState(0);
-  const [form, setForm] = useState<FormData>(INITIAL);
+  const [form, setForm] = useState<FormData>({...INITIAL,category:initialCategory ?? ''});
   const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({});
   const [loading, setLoading] = useState(false);
   const [serverError, setServerError] = useState('');
+  const [authRequired, setAuthRequired] = useState(false);
+  const [existingJob, setExistingJob] = useState<string | null>(null);
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const publishing = useRef(false);
+  const requestId = useRef<string | null>(null);
+  const photoBusy = useRef(false);
+  const onPhotoBusyChange = (busy: boolean) => { photoBusy.current = busy; setPhotoUploading(busy); };
 
   const set = <K extends keyof FormData>(key: K, value: FormData[K]) => {
     setForm((f) => ({ ...f, [key]: value }));
@@ -51,45 +62,68 @@ export default function RequestWizard({ locale }: Props) {
   function validateStep(): boolean {
     const e: typeof errors = {};
     if (step === 0 && !form.category) e.category = locale === 'ru' ? 'Выберите категорию' : 'Alegeți categoria';
-    if (step === 1 && form.description.trim().length < 20)
+    if (step === 1 && Array.from(form.description.trim()).length < 20)
       e.description = locale === 'ru' ? 'Минимум 20 символов' : 'Minim 20 caractere';
-    if (step === 2 && !form.city)
-      e.lat = locale === 'ru' ? 'Выберите город' : 'Alegeți orașul';
+    if (step === 2 && !isPilotLocation(form.lat, form.lng))
+      e.lat = locale === 'ru' ? 'Отметьте точку в Бельцах на карте' : 'Marcați un punct în Bălți pe hartă';
+    if (step === 2 && form.budget.trim() && (!/^\d+(?:\.\d{1,2})?$/.test(form.budget.trim()) || Number(form.budget) > 1_000_000_000))
+      e.budget = locale === 'ru' ? 'Укажите корректный бюджет' : 'Indicați un buget valid';
     setErrors(e);
     return Object.keys(e).length === 0;
   }
 
   function nextStep() {
+    if (photoBusy.current) return;
     if (!validateStep()) return;
     if (step < STEPS.length - 1) setStep(step + 1);
   }
 
   function prevStep() {
+    if (photoBusy.current || publishing.current) return;
     if (step > 0) setStep(step - 1);
   }
 
   async function publish() {
-    if (!validateStep()) return;
+    if (publishing.current || photoBusy.current || !validateStep()) return;
+    publishing.current = true;
+    let published = false;
     setLoading(true);
     setServerError('');
+    setAuthRequired(false);
+    setExistingJob(null);
     try {
-      await createJob({
-        category: form.category as string,
+      requestId.current ??= crypto.randomUUID();
+      const result = await createJob({
+        requestId: requestId.current,
+        category: form.category as JobInput['category'],
         description: form.description,
-        city: form.city || CITIES[0],
+        city: PILOT_CITY,
         area: form.area || form.city || CITIES[0],
-        lat: form.lat ?? 0,
-        lng: form.lng ?? 0,
+        lat: form.lat!,
+        lng: form.lng!,
         budget: form.budget,
         urgent: form.urgent,
         needsQuote: form.needsQuote,
         photos: form.photos,
-        locale,
+        locale: locale === 'ro' ? 'ro' : 'ru',
       });
-    } catch (err) {
-      setServerError(err instanceof Error ? err.message : 'Ошибка. Попробуйте снова.');
-      setLoading(false);
-    }
+      if (!result.ok) {
+        if (result.error === 'not_authenticated') {
+          setAuthRequired(true);
+          setServerError(locale === 'ru' ? 'Войдите в новой вкладке, затем вернитесь и отправьте форму. Введённые данные сохранятся здесь.' : 'Autentificați-vă într-o filă nouă, apoi reveniți și trimiteți formularul. Datele introduse rămân aici.');
+        }
+        else {
+          setServerError(jobErrorText(result.error, locale));
+          if (result.error === 'publication_conflict') setExistingJob(result.jobId ?? null);
+        }
+        return;
+      }
+      router.push(`/${locale}/jobs/${result.jobId}`);
+      router.refresh();
+      published = true;
+    } catch {
+      setServerError(locale === 'ru' ? 'Не удалось получить ответ. Повторите отправку — эта форма не создаст вторую заявку.' : 'Nu am primit răspunsul. Reîncercați — acest formular nu va crea o a doua cerere.');
+    } finally { if (!published) { publishing.current = false; setLoading(false); } }
   }
 
   const isLastStep = step === STEPS.length - 1;
@@ -98,23 +132,25 @@ export default function RequestWizard({ locale }: Props) {
     <div style={{ maxWidth: 560, margin: '0 auto' }}>
       <ProgressBar step={step} total={STEPS.length} locale={locale} />
 
-      <div className="card p-6 mt-4">
+      <fieldset disabled={loading} className="card p-6 mt-4" style={{ minWidth: 0 }}>
         {step === 0 && <Step1Categories form={form} set={set} errors={errors} locale={locale} />}
-        {step === 1 && <Step2Description form={form} set={set} errors={errors} locale={locale} />}
+        {step === 1 && <Step2Description form={form} set={set} errors={errors} locale={locale} onPhotoBusyChange={onPhotoBusyChange} />}
         {step === 2 && <Step3Location form={form} set={set} errors={errors} locale={locale} />}
-      </div>
+      </fieldset>
 
       {serverError && (
-        <p className="text-sm mt-3 text-center" style={{ color: 'var(--danger)' }}>{serverError}</p>
+        <p role="alert" className="text-sm mt-3 text-center" style={{ color: 'var(--danger)' }}>{serverError}</p>
       )}
+      {existingJob && <a href={`/${locale}/jobs/${existingJob}`} className="btn-secondary mt-3">{locale === 'ru' ? 'Открыть опубликованную заявку →' : 'Deschide cererea publicată →'}</a>}
 
+      {authRequired && <a href={`/${locale}/auth`} target="_blank" rel="noopener noreferrer" className="btn-secondary mt-3">{locale === 'ru' ? 'Войти в новой вкладке →' : 'Autentificare într-o filă nouă →'}</a>}
       <div
         className="flex justify-between gap-3 mt-4"
         style={{ position: 'sticky', bottom: 16, background: 'var(--bg-deep)', padding: '12px 0', zIndex: 10 }}
       >
         <button
           onClick={prevStep}
-          disabled={step === 0}
+          disabled={step === 0 || loading || photoUploading}
           className="btn-secondary"
           style={{ opacity: step === 0 ? 0 : 1, pointerEvents: step === 0 ? 'none' : 'auto' }}
         >
@@ -122,13 +158,13 @@ export default function RequestWizard({ locale }: Props) {
         </button>
 
         {!isLastStep ? (
-          <button onClick={nextStep} className="btn-primary" style={{ minWidth: 140 }}>
+          <button onClick={nextStep} disabled={photoUploading} className="btn-primary" style={{ minWidth: 140 }}>
             {locale === 'ru' ? 'Далее →' : 'Înainte →'}
           </button>
         ) : (
           <button
             onClick={publish}
-            disabled={loading}
+            disabled={loading || photoUploading}
             className="btn-primary"
             style={{ minWidth: 180, opacity: loading ? 0.7 : 1 }}
           >
@@ -177,7 +213,7 @@ function ProgressBar({ step, total, locale }: { step: number; total: number; loc
 
 /* ── Step 1 ───────────────────────────────────────────────────── */
 function Step1Categories({ form, set, errors, locale }: StepProps) {
-  const cats = Object.entries(CATEGORY_LABELS_RU) as [Category, string][];
+  const cats = Object.entries(locale === 'ro' ? CATEGORY_LABELS_RO : CATEGORY_LABELS_RU) as [Category, string][];
   return (
     <div>
       <h2 className="font-semibold text-lg mb-4" style={{ color: 'var(--text)' }}>
@@ -206,7 +242,7 @@ function Step1Categories({ form, set, errors, locale }: StepProps) {
 }
 
 /* ── Step 2 ───────────────────────────────────────────────────── */
-function Step2Description({ form, set, errors, locale }: StepProps) {
+function Step2Description({ form, set, errors, locale, onPhotoBusyChange }: StepProps & {onPhotoBusyChange: (busy: boolean) => void}) {
   return (
     <div className="flex flex-col gap-4">
       <h2 className="font-semibold text-lg" style={{ color: 'var(--text)' }}>
@@ -216,6 +252,7 @@ function Step2Description({ form, set, errors, locale }: StepProps) {
       <div>
         <label className="field-label">{locale === 'ru' ? 'Описание работы *' : 'Descrierea lucrării *'}</label>
         <textarea
+          maxLength={5000}
           rows={4}
           value={form.description}
           onChange={(e) => set('description', e.target.value)}
@@ -227,8 +264,8 @@ function Step2Description({ form, set, errors, locale }: StepProps) {
         />
         <div className="flex justify-between mt-1">
           {errors.description ? <FieldError>{errors.description}</FieldError> : <span />}
-          <span className="text-xs" style={{ color: form.description.length < 20 ? 'var(--warning)' : 'var(--text-muted)' }}>
-            {form.description.length}/20 {locale === 'ru' ? 'мин.' : 'min.'}
+          <span className="text-xs" style={{ color: Array.from(form.description.trim()).length < 20 ? 'var(--warning)' : 'var(--text-muted)' }}>
+            {Array.from(form.description.trim()).length}/20 {locale === 'ru' ? 'мин.' : 'min.'}
           </span>
         </div>
       </div>
@@ -248,6 +285,7 @@ function Step2Description({ form, set, errors, locale }: StepProps) {
           urls={form.photos}
           onChange={(urls) => set('photos', urls)}
           locale={locale}
+          onBusyChange={onPhotoBusyChange}
         />
       </div>
     </div>
@@ -279,17 +317,17 @@ function Step3Location({ form, set, errors, locale }: StepProps) {
       {/* Map to pin exact location */}
       <div>
         <label className="field-label" style={{ marginBottom: 6 }}>
-          {locale === 'ru' ? 'Точное место (необязательно)' : 'Locul exact (opțional)'}
+          {locale === 'ru' ? 'Отметьте место на карте *' : 'Marcați locul pe hartă *'}
         </label>
         <LocationPicker
           lat={form.lat}
           lng={form.lng}
           locale={locale}
-          onPick={(lat, lng, area, city) => {
+          onPick={(lat, lng, area) => {
             set('lat', lat);
             set('lng', lng);
             set('area', area);
-            if (city) set('city', city);
+            set('city', PILOT_CITY);
           }}
         />
         {form.area && (
@@ -299,12 +337,13 @@ function Step3Location({ form, set, errors, locale }: StepProps) {
         )}
       </div>
       {errors.lat && <FieldError>{errors.lat}</FieldError>}
+      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{locale === 'ru' ? 'GPS запрашивается только по кнопке. Точное место доступно вам и выбранному мастеру.' : 'GPS este solicitat doar la apăsarea butonului. Locul exact este disponibil dvs. și meșterului ales.'}</p>
 
       <div>
         <label className="field-label">{locale === 'ru' ? 'Бюджет (необязательно)' : 'Buget (opțional)'}</label>
         <div className="relative">
           <input
-            type="number"
+            type="number" min="0" max="1000000000" step="0.01"
             value={form.budget}
             onChange={(e) => set('budget', e.target.value)}
             placeholder={locale === 'ru' ? 'например 2000' : 'ex. 2000'}
@@ -313,6 +352,7 @@ function Step3Location({ form, set, errors, locale }: StepProps) {
           />
           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm" style={{ color: 'var(--text-muted)' }}>MDL</span>
         </div>
+        {errors.budget && <FieldError>{errors.budget}</FieldError>}
       </div>
     </div>
   );

@@ -1,10 +1,11 @@
+import { PUBLIC_JOB_COLUMNS } from '@/lib/supabase/marketplace';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import EmptyState from '@/components/ui/EmptyState';
 import { createClient } from '@/lib/supabase/server';
-import { CITIES, CATEGORY_LABELS_RU, CATEGORY_ICONS, type Category } from '@/lib/mock/data';
+import { CITIES, CATEGORY_LABELS_RU, CATEGORY_LABELS_RO, CATEGORY_ICONS, type Category } from '@/lib/mock/data';
 import Badge from '@/components/ui/Badge';
 import type { Job } from '@/lib/supabase/types';
 
@@ -24,26 +25,31 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function JobsPage({ params, searchParams }: Props) {
   const { locale } = await params;
-  const { city, category, q, sort, page: pageParam } = await searchParams;
-  const page = Math.max(1, parseInt(pageParam ?? '1', 10));
+  const { category, q, sort, page: pageParam } = await searchParams;
+  const city = CITIES[0];
+  const requestedPage = Number(pageParam ?? '1');
+  const page = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? Math.min(requestedPage, 1000) : 1;
   const from = (page - 1) * PAGE_SIZE;
   const to   = from + PAGE_SIZE; // fetch PAGE_SIZE+1 to detect if next page exists
 
   const supabase = await createClient();
+  // This dynamic Server Component takes one request-time snapshot for all cards.
+  // eslint-disable-next-line react-hooks/purity
+  const now = Date.now();
 
   let query = supabase
     .from('jobs')
-    .select('*')
-    .eq('status', 'active');
+    .select(PUBLIC_JOB_COLUMNS)
+    .eq('status', 'active').gt('expires_at', new Date(now).toISOString());
 
   if (city) query = query.eq('city', city);
   if (category) query = query.eq('category', category);
-  if (q) query = (query as any).ilike('description', `%${q}%`);
-  if (sort === 'urgent') query = (query as any).order('urgent', { ascending: false }).order('created_at', { ascending: false });
-  else if (sort === 'budget') query = (query as any).order('budget_max', { ascending: false, nullsFirst: false }).order('created_at', { ascending: false });
+  if (q) query = query.ilike('description', `%${q}%`);
+  if (sort === 'urgent') query = query.order('urgent', { ascending: false }).order('created_at', { ascending: false });
+  else if (sort === 'budget') query = query.order('budget_max', { ascending: false, nullsFirst: false }).order('created_at', { ascending: false });
   else query = query.order('created_at', { ascending: false });
 
-  query = (query as any).range(from, to);
+  query = query.range(from, to);
 
   const { data: rawJobs, error } = await query;
   const allFetched = (rawJobs as JobWithBids[] | null) ?? [];
@@ -177,7 +183,7 @@ export default async function JobsPage({ params, searchParams }: Props) {
                 <>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {jobs.map((job) => (
-                      <JobCard key={job.id} job={job} locale={locale} />
+                      <JobCard key={job.id} job={job} locale={locale} now={now} />
                     ))}
                   </div>
 
@@ -220,14 +226,14 @@ export default async function JobsPage({ params, searchParams }: Props) {
   );
 }
 
-function JobCard({ job, locale }: { job: JobWithBids; locale: string }) {
+function JobCard({ job, locale, now }: { job: JobWithBids; locale: string; now: number }) {
   const cat = job.category as Category;
   const icon = CATEGORY_ICONS[cat] ?? '🔧';
-  const label = CATEGORY_LABELS_RU[cat] ?? cat;
+  const label = (locale === 'ro' ? CATEGORY_LABELS_RO : CATEGORY_LABELS_RU)[cat] ?? cat;
   const bidsCount = Array.isArray(job.bid_count) ? (job.bid_count[0] as { count: number })?.count ?? 0 : 0;
 
   const ago = (() => {
-    const diff = Date.now() - new Date(job.created_at).getTime();
+    const diff = now - new Date(job.created_at).getTime();
     const h = Math.floor(diff / 3_600_000);
     if (h < 1) return locale === 'ru' ? 'только что' : 'acum';
     if (h < 24) return `${h} ${locale === 'ru' ? 'ч назад' : 'ore în urmă'}`;
@@ -250,7 +256,7 @@ function JobCard({ job, locale }: { job: JobWithBids; locale: string }) {
       </p>
 
       <div className="flex flex-wrap gap-3 text-xs" style={{ color: 'var(--text-muted)' }}>
-        <span>📍 {job.city}, {job.area}</span>
+        <span>📍 {job.city}{job.area && job.area !== job.city ? `, ${job.area}` : ''}</span>
         {(job.budget_min || job.budget_max) && (
           <span>💰 {job.budget_min && job.budget_max
             ? `${job.budget_min}–${job.budget_max} MDL`
@@ -290,7 +296,7 @@ function buildHref(locale: string, params: { city?: string; category?: string; q
 function FilterPanel({ locale, selectedCity, selectedCategory, q, sort }: {
   locale: string; selectedCity?: string; selectedCategory?: Category; q?: string; sort?: string;
 }) {
-  const categories = Object.entries(CATEGORY_LABELS_RU) as [Category, string][];
+  const categories = Object.entries(locale === 'ro' ? CATEGORY_LABELS_RO : CATEGORY_LABELS_RU) as [Category, string][];
   return (
     <div className="card p-4 flex flex-col gap-5 sticky top-24">
       <div>

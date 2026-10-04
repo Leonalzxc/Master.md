@@ -1,3 +1,4 @@
+import { PUBLIC_JOB_COLUMNS } from '@/lib/supabase/marketplace';
 import { notFound, redirect } from 'next/navigation';
 import type { Metadata } from 'next';
 import Link from 'next/link';
@@ -22,7 +23,7 @@ export default async function ReviewPage({ params }: Props) {
   if (!user) redirect(`/${locale}/auth?next=/${locale}/jobs/${id}/review`);
 
   const { data: rawJob, error } = await supabase
-    .from('jobs').select('*').eq('id', id).single();
+    .from('jobs').select(PUBLIC_JOB_COLUMNS).eq('id', id).single();
   const job = rawJob as Job | null;
   if (error || !job) notFound();
 

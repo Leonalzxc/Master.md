@@ -1,3 +1,4 @@
+import { getMyWorkerProfile } from '@/lib/supabase/marketplace';
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
@@ -5,7 +6,7 @@ import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import ProfileForm from '@/components/features/ProfileForm';
 import { createClient } from '@/lib/supabase/server';
-import type { Profile, ProfileWorker } from '@/lib/supabase/types';
+import { ensureMyProfile } from '@/lib/supabase/ensure-profile';
 
 type Props = { params: Promise<{ locale: string }> };
 
@@ -21,23 +22,9 @@ export default async function ProfilePage({ params }: Props) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect(`/${locale}/auth`);
 
-  let { data: rawProfile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
-  if (!rawProfile) {
-    // Профиль ещё не создан — создаём минимальную запись
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase as any).from('profiles').upsert({
-      id: user.id,
-      phone: user.phone ?? user.email ?? '',
-      role: 'client',
-    });
-    const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single();
-    rawProfile = data;
-  }
-  const profile = rawProfile as (Profile & { telegram_chat_id?: number | null }) | null;
-  if (!profile) redirect(`/${locale}/auth`);
+  const profile = await ensureMyProfile(supabase, user);
 
-  const { data: rawWorker } = await supabase.from('profiles_worker').select('*').eq('id', user.id).single();
-  const workerProfile = rawWorker as ProfileWorker | null;
+  const workerProfile = await getMyWorkerProfile(supabase);
 
   const isWorker = profile.role === 'worker';
   const t = (ru: string, ro: string) => locale === 'ru' ? ru : ro;
@@ -101,7 +88,6 @@ export default async function ProfilePage({ params }: Props) {
             profile={profile}
             workerProfile={workerProfile}
             telegramConnected={!!profile.telegram_chat_id}
-            userId={user.id}
           />
         </div>
       </main>

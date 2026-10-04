@@ -9,8 +9,8 @@
   },
   "home": {
     "heroTitle": "Găsește un meșter pentru reparații și construcții",
-    "heroHighlight": "în 2 minute",
-    "heroSubtitle": "Descrie sarcina — primești 3–5 oferte de la meșteri din apropiere. Gratuit pentru clienți.",
+    "heroHighlight": "în Bălți",
+    "heroSubtitle": "Găsiți un meșter sau o lucrare în Bălți. Cererile și ofertele sunt gratuite în timpul pilotului.",
     "ctaClient": "Creează cerere",
     "ctaWorker": "Sunt meșter, vreau comenzi",
     "howItWorks": "Cum funcționează",
@@ -29,10 +29,10 @@
     "trustTitle": "De ce meșterii și clienții ne aleg",
     "trust1Title": "Recenzii reale",
     "trust1Desc": "Recenziile sunt lăsate doar de cei care au finalizat comanda.",
-    "trust2Title": "Răspunsuri rapide",
-    "trust2Desc": "Prima ofertă în medie în 15–30 de minute.",
-    "trust3Title": "Fără plată în avans",
-    "trust3Desc": "Plătești meșterului direct, după executarea lucrării."
+    "trust2Title": "Oferte de la meșteri",
+    "trust2Desc": "Comparați costurile și termenele ofertelor. În timpul pilotului răspunsul depinde de disponibilitatea meșterilor.",
+    "trust3Title": "Pilot gratuit",
+    "trust3Desc": "Publicarea și ofertele sunt gratuite. Conveniți prețul și plata lucrării cu meșterul."
   },
   "categories": {
     "electric": "Electrică",
@@ -67,7 +67,7 @@
     "back": "Înapoi",
     "next": "Următor",
     "successTitle": "Cererea a fost publicată!",
-    "successDesc": "Așteptați oferte de la meșteri. Prima — de obicei în 15–30 de minute.",
+    "successDesc": "Cererea a fost publicată. Meșterii pot trimite oferte; timpul de răspuns depinde de disponibilitatea lor.",
     "viewBids": "Vezi ofertele"
   },
   "auth": {
@@ -117,7 +117,7 @@
     "moderation": "Reguli de moderare",
     "support": "Suport",
     "forWorkers": "Pentru meșteri",
-    "pricing": "Tarife",
+    "pricing": "Pilot gratuit",
     "rights": "Toate drepturile rezervate"
   },
   "listings": {

@@ -1,3 +1,4 @@
+import { getMyWorkerProfile } from '@/lib/supabase/marketplace';
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
@@ -6,7 +7,7 @@ import Footer from '@/components/layout/Footer';
 import Badge from '@/components/ui/Badge';
 import EmptyState from '@/components/ui/EmptyState';
 import { createClient } from '@/lib/supabase/server';
-import { CATEGORY_LABELS_RU, CATEGORY_ICONS, type Category } from '@/lib/mock/data';
+import { CATEGORY_LABELS_RU, CATEGORY_LABELS_RO, CATEGORY_ICONS, type Category } from '@/lib/mock/data';
 import type { Bid, Job, ProfileWorker } from '@/lib/supabase/types';
 
 type BidRow = Bid & { job: Pick<Job, 'id' | 'description' | 'category' | 'city' | 'area' | 'status' | 'budget_min' | 'budget_max' | 'created_at'> | null };
@@ -31,7 +32,7 @@ export default async function WorkerDashboard({ params }: Props) {
       .select('*, job:jobs(id, description, category, city, area, status, budget_min, budget_max, created_at)')
       .eq('worker_id', user.id)
       .order('created_at', { ascending: false }),
-    supabase.from('profiles_worker').select('*').eq('id', user.id).single(),
+    getMyWorkerProfile(supabase).then(data => ({data})),
     supabase
       .from('reviews')
       .select('*, author:profiles!reviews_author_id_fkey(name)')
@@ -44,7 +45,6 @@ export default async function WorkerDashboard({ params }: Props) {
 
   // Fetch matching jobs (worker's categories + city, not yet bid on)
   const workerCategories = (worker?.categories ?? []) as string[];
-  const workerAreas = (worker?.areas ?? []) as string[];
   const bidJobIds = new Set(bids.map((b) => b.job?.id).filter(Boolean) as string[]);
 
   let matchingJobs: Job[] = [];
@@ -56,7 +56,7 @@ export default async function WorkerDashboard({ params }: Props) {
       .in('category', workerCategories)
       .order('created_at', { ascending: false })
       .limit(6);
-    if (workerAreas.length > 0) q = q.in('city', workerAreas);
+    q = q.eq('city', 'Бельцы').gt('expires_at', new Date().toISOString());
     const { data: rawMatching } = await q;
     matchingJobs = ((rawMatching ?? []) as Job[]).filter((j) => !bidJobIds.has(j.id));
   }
@@ -125,12 +125,12 @@ export default async function WorkerDashboard({ params }: Props) {
                 </p>
                 <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
                   {verificationSubmitted
-                    ? (locale === 'ru' ? 'Обычно занимает 1–2 рабочих дня. После проверки появится значок ✓ Проверен.' : 'Durează de obicei 1-2 zile lucrătoare.')
+                    ? (locale === 'ru' ? 'Профиль ожидает ручного просмотра. Срок в пилоте не установлен; отметка не гарантирует квалификацию.' : 'Profilul așteaptă examinarea manuală. Termenul nu este stabilit în pilot; insigna nu garantează calificarea.')
                     : (locale === 'ru' ? 'Верифицированные мастера получают значок и больше доверия от заказчиков.' : 'Meșterii verificați primesc mai multă încredere.')}
                 </p>
               </div>
               {!verificationSubmitted && (
-                <Link href={`/${locale}/workers/${user.id}`} className="btn-secondary shrink-0" style={{ height: 34, fontSize: 13, padding: '0 12px' }}>
+                <Link href={`/${locale}/account/verify`} className="btn-secondary shrink-0" style={{ height: 34, fontSize: 13, padding: '0 12px' }}>
                   {locale === 'ru' ? 'Пройти' : 'Verifică'}
                 </Link>
               )}
@@ -153,45 +153,11 @@ export default async function WorkerDashboard({ params }: Props) {
             ))}
           </div>
 
-          {/* Bid credits card */}
-          <div className="card p-5 flex items-center justify-between gap-4 flex-wrap">
-            <div className="flex items-center gap-3">
-              <span style={{ fontSize: 28 }}>💳</span>
-              <div>
-                <p className="font-semibold text-sm" style={{ color: 'var(--text)' }}>
-                  {locale === 'ru' ? 'Кредиты для откликов' : 'Credite pentru oferte'}
-                </p>
-                <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                  {locale === 'ru' ? '1 кредит = 1 отклик на заявку' : '1 credit = 1 ofertă pe cerere'}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="text-center">
-                <div
-                  className="font-bold text-2xl"
-                  style={{ color: (worker?.bid_credits ?? 0) > 0 ? 'var(--accent)' : 'var(--danger)' }}
-                >
-                  {worker?.bid_credits ?? 0}
-                </div>
-                <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                  {locale === 'ru' ? 'кредитов' : 'credite'}
-                </div>
-              </div>
-              <Link
-                href={`/${locale}/credits`}
-                className="text-xs px-3 py-1.5 rounded-full font-semibold"
-                style={{ background: 'var(--accent-dim)', color: 'var(--accent)', textDecoration: 'none' }}
-              >
-                + {locale === 'ru' ? 'Купить' : 'Cumpără'}
-              </Link>
-              {(worker?.bid_credits ?? 0) === 0 && (
-                <span className="text-xs px-3 py-1.5 rounded-full font-semibold"
-                  style={{ background: 'rgba(239,68,68,.1)', color: 'var(--danger)' }}>
-                  {locale === 'ru' ? 'Нет кредитов' : 'Fără credite'}
-                </span>
-              )}
-            </div>
+          <div className="card p-5">
+            <p className="font-semibold">{locale === 'ru' ? 'Бесплатный пилот в Бельцах' : 'Pilot gratuit în Bălți'}</p>
+            <p className="text-sm mt-2" style={{ color: 'var(--text-muted)' }}>
+              {locale === 'ru' ? 'До 10 новых откликов за 24 часа. Кредиты не списываются, пополнение не требуется.' : 'Până la 10 oferte noi în 24 de ore. Creditele nu se deduc; reîncărcarea nu este necesară.'}
+            </p>
           </div>
 
           {/* Matching jobs — relevant new jobs for this worker */}
@@ -222,7 +188,7 @@ export default async function WorkerDashboard({ params }: Props) {
                     <div key={job.id} className="card p-4 flex items-start gap-3">
                       <div className="flex-1 min-w-0">
                         <div className="flex flex-wrap gap-2 items-center mb-1.5">
-                          <Badge variant="category">{CATEGORY_ICONS[cat]} {CATEGORY_LABELS_RU[cat]}</Badge>
+                          <Badge variant="category">{CATEGORY_ICONS[cat]} {(locale === 'ro' ? CATEGORY_LABELS_RO : CATEGORY_LABELS_RU)[cat]}</Badge>
                           {(job as unknown as { urgent?: boolean }).urgent && (
                             <Badge variant="urgent">⚡ {locale === 'ru' ? 'Срочно' : 'Urgent'}</Badge>
                           )}
@@ -404,7 +370,7 @@ function BidCard({ bid, locale, highlight, muted, done }: {
           {job.description}
         </p>
         <div className="flex flex-wrap gap-3 text-xs" style={{ color: 'var(--text-muted)' }}>
-          <span>📍 {job.city}, {job.area}</span>
+          <span>📍 {job.city}{job.area && job.area !== job.city ? `, ${job.area}` : ''}</span>
           {bid.price && <span>💰 {locale === 'ru' ? 'Цена:' : 'Preț:'} {bid.price_max ? `${bid.price}–${bid.price_max}` : bid.price} MDL</span>}
           {completedDate && <span>📅 {completedDate}</span>}
         </div>
