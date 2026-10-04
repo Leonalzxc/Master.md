@@ -10,6 +10,7 @@ export const files=[
  '202610040003_worker_location_privacy.sql',
  '202610040004_secure_telegram_links.sql',
  '202610040005_legacy_job_notifications.sql',
+ '202610040006_sanitized_photos.sql',
 ];
 export function pilotRelease(){
  const entries=files.map(name=>{const sql=readFileSync(new URL(`../supabase/migrations/${name}`,import.meta.url),'utf8');return {name,sha256:createHash('sha256').update(sql).digest('hex'),sql};});
@@ -24,6 +25,11 @@ export function pilotRelease(){
     OR NOT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='profiles' AND column_name='telegram_chat_id')
     OR NOT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='profiles_worker' AND column_name='verification_submitted_at') THEN
    RAISE EXCEPTION 'Missing prerequisite columns: inspect schema before release';
+END IF;
+ IF to_regclass('storage.buckets') IS NULL OR NOT EXISTS (
+   SELECT 1 FROM pg_class WHERE oid=to_regclass('storage.objects') AND relrowsecurity
+ ) THEN
+   RAISE EXCEPTION 'Storage schema/RLS missing: inspect managed schema before release';
  END IF;
 END $preflight$;\n`;
  const body=entries.map(e=>`\n-- Source: ${e.name}; SHA256: ${e.sha256}\n${e.sql.replace(/^\s*(BEGIN|COMMIT);[ \t]*$/gmi,'')}`).join('\n');

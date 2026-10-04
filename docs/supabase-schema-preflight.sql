@@ -15,3 +15,9 @@ SELECT p.proname,pg_get_function_identity_arguments(p.oid) AS args,p.prosecdef A
        p.proconfig AS settings
 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
 WHERE n.nspname='public' ORDER BY p.proname;
+
+-- Storage metadata only. No object names, photographs or signed URLs.
+SELECT id,public,file_size_limit,allowed_mime_types FROM storage.buckets WHERE id='job-photos';
+SELECT policyname,roles,cmd,permissive,qual,with_check
+FROM pg_policies WHERE schemaname='storage' AND tablename='objects' ORDER BY policyname;
+SELECT relrowsecurity FROM pg_class WHERE oid=to_regclass('storage.objects');

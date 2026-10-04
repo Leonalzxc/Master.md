@@ -19,6 +19,14 @@ export async function setupBidDatabase(db) {
     create function auth.role() returns text language sql stable as
       $$select nullif(current_setting('request.jwt.claim.role', true), '')$$;
     grant usage on schema auth, public to anon, authenticated, service_role;
+    create schema storage;
+    create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);
+    create table storage.objects(id uuid primary key default gen_random_uuid(),bucket_id text references storage.buckets(id),name text);
+    alter table storage.objects enable row level security;
+    create function storage.foldername(name text) returns text[] language sql immutable as
+      $$select string_to_array(name,'/')$$;
+    grant usage on schema storage to anon,authenticated,service_role;
+    grant all on all tables in schema storage to anon,authenticated,service_role;
   `);
   await db.exec(migration('001_init_schema.sql').split('-- ── Seed data')[0]
     .replace('create extension if not exists "pgcrypto";', ''));
@@ -27,7 +35,7 @@ export async function setupBidDatabase(db) {
     grant all on all tables in schema public to anon, authenticated, service_role;
     grant insert (job_id,worker_id,comment) on bids to authenticated;
     grant update(bid_credits), insert(bid_credits) on profiles_worker to authenticated;`);
-  for (const name of ['006_notifications.sql', '008_fix_bids_rls.sql', '010_fix_jobs_rls.sql',
+  for (const name of ['006_notifications.sql', '007_job_photos.sql', '008_fix_bids_rls.sql', '010_fix_jobs_rls.sql',
     '011_bid_credits_and_admin.sql', '012_auto_expire_and_notify.sql', '013_fix_profiles_rls.sql', '202609230001_profile_contact_privacy.sql']) {
     await db.exec(migration(name));
   }

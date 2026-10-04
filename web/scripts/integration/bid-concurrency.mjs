@@ -33,6 +33,22 @@ afterEach(async () => {
 });
 after(async () => { for (const client of clients) await client.end(); });
 
+test('parallel photo attempts cannot exceed the final rolling upload slot', async () => {
+  const { readFileSync } = await import('node:fs');
+  await db.exec(readFileSync(new URL('../../supabase/migrations/202610040006_sanitized_photos.sql', import.meta.url), 'utf8'));
+  await db.query('insert into photo_uploads(user_id) select $1 from generate_series(1,14)', [workerId]);
+  const a = await connect(), b = await connect();
+  await actor(a); await actor(b);
+  await a.query('begin');
+  await a.query('select reserve_photo_upload()');
+  const pending = outcome(b.query('select reserve_photo_upload()'));
+  await waitForLock(b);
+  await a.query('commit');
+  assert.equal((await pending).error?.message, 'photo_rate_limit');
+  await db.exec('reset role');
+  assert.equal((await db.query('select count(*)::int as n from photo_uploads where user_id=$1', [workerId])).rows[0].n, 15);
+});
+
 async function waitForLock(client) {
   for (let i = 0; i < 100; i++) {
     const { rows } = await db.query('select wait_event_type from pg_stat_activity where pid=$1', [client.processID]);

@@ -49,7 +49,7 @@ export async function createJob(input: JobInput): Promise<JobResult> {
 
   if (error) {
     if (error.message === 'job_daily_limit') return { ok: false, error: 'daily_limit' };
-    if (error.message === 'pilot_location_required' || error.message === 'invalid_input') return { ok: false, error: 'invalid_input' };
+    if (error.message === 'pilot_location_required' || error.message === 'invalid_input' || error.message === 'invalid_photo_reference') return { ok: false, error: 'invalid_input' };
     if (error.message === 'not_authorized') return { ok: false, error: 'not_authorized' };
     console.error('[createJob]', { code: error.code });
     return { ok: false, error: 'temporarily_unavailable' };
