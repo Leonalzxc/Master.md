@@ -1,3 +1,4 @@
+import { getMyWorkerProfile } from '@/lib/supabase/marketplace';
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
@@ -25,11 +26,7 @@ export default async function VerifyPage({ params }: Props) {
   const profile = rawProfile as Profile | null;
   if (profile?.role !== 'worker') redirect(`/${locale}/account`);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: rawWorker } = await (supabase.from('profiles_worker') as any)
-    .select('bid_credits, verified, categories, verification_submitted_at')
-    .eq('id', user.id)
-    .single();
+  const rawWorker = await getMyWorkerProfile(supabase);
   const worker = rawWorker as (Pick<ProfileWorker, 'bid_credits' | 'verified' | 'categories'> & { verification_submitted_at?: string | null }) | null;
 
   const isVerified = worker?.verified ?? false;

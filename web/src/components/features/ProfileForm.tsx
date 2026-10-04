@@ -23,7 +23,7 @@ export default function ProfileForm({ locale, profile, workerProfile, telegramCo
   const isWorker = role === 'worker';
 
   const [name, setName] = useState(profile.name ?? '');
-  const [city, setCity] = useState(profile.city ?? '');
+  const [city, setCity] = useState(CITIES.includes(profile.city ?? '') ? profile.city! : CITIES[0]);
   const [bio, setBio] = useState(workerProfile?.bio ?? '');
   const [categories, setCategories] = useState<Category[]>((workerProfile?.categories ?? []) as Category[]);
   const [areas, setAreas] = useState<string[]>(workerProfile?.areas ?? []);

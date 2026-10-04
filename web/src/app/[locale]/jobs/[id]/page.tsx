@@ -1,3 +1,4 @@
+import { getJobLocation, getJobWorkerContact, PUBLIC_JOB_COLUMNS } from '@/lib/supabase/marketplace';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import Link from 'next/link';
@@ -26,7 +27,7 @@ type BidRow = Bid & {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale, id } = await params;
   const supabase = await createClient();
-  const { data } = await supabase.from('jobs').select('*').eq('id', id).single();
+  const { data } = await supabase.from('jobs').select(PUBLIC_JOB_COLUMNS).eq('id', id).single();
   const job = data as Job | null;
   if (!job) return { title: locale === 'ru' ? 'Заявка не найдена' : 'Cerere negăsită' };
 
@@ -59,7 +60,7 @@ export default async function JobDetailPage({ params }: Props) {
   const { data: { user } } = await supabase.auth.getUser();
 
   const { data: rawJob, error: jobError } = await supabase
-    .from('jobs').select('*').eq('id', id).single();
+    .from('jobs').select(PUBLIC_JOB_COLUMNS).eq('id', id).single();
   const job = rawJob as Job | null;
   if (jobError || !job) notFound();
 
@@ -71,7 +72,7 @@ export default async function JobDetailPage({ params }: Props) {
   const selectedWorkerId = jobAny.selected_worker_id;
   const isSelectedWorker = !!(user && selectedWorkerId && selectedWorkerId === user.id);
 
-  const [{ data: rawBids }, { data: rawWorkerContacts }, clientProfile] = await Promise.all([
+  const [{ data: rawBids }, workerContacts, clientProfile, location] = await Promise.all([
     supabase
       .from('bids')
       .select('*, worker:profiles(id, name, profiles_worker(is_pro, verified, rating_avg, rating_count))')
@@ -79,16 +80,15 @@ export default async function JobDetailPage({ params }: Props) {
       .order('created_at', { ascending: true }),
     // Owner sees selected worker's contacts when in_progress
     isOwner && selectedWorkerId && job.status === 'in_progress'
-      ? supabase.from('profiles_worker').select('viber, telegram, whatsapp').eq('id', selectedWorkerId).single()
-      : Promise.resolve({ data: null }),
+      ? getJobWorkerContact(supabase, id)
+      : Promise.resolve(null),
     // Selected worker sees client's phone when in_progress
     isSelectedWorker && job.status === 'in_progress'
       ? getJobClientContact(supabase, id)
       : Promise.resolve(null),
+    user ? getJobLocation(supabase, id) : Promise.resolve(null),
   ]);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const workerContacts = rawWorkerContacts as any;
 
   const bids = ((rawBids ?? []) as BidRow[]).sort((a, b) => {
     if (a.status === 'selected') return -1;
@@ -158,6 +158,11 @@ export default async function JobDetailPage({ params }: Props) {
           <div className="flex flex-col md:flex-row gap-6 items-start">
             {/* Main content — left on desktop, top on mobile */}
             <div className="flex-1 flex flex-col gap-6">
+              {location?.lat != null && location?.lng != null && <div className="card p-4">
+                <h2 className="font-semibold mb-2">{locale === 'ru' ? 'Точное место работы' : 'Locul exact al lucrării'}</h2>
+                <p className="text-sm">{location.lat.toFixed(5)}, {location.lng.toFixed(5)}</p>
+                <a href={`https://www.openstreetmap.org/?mlat=${location.lat}&mlon=${location.lng}#map=17/${location.lat}/${location.lng}`} target="_blank" rel="noopener noreferrer" className="text-sm underline">{locale === 'ru' ? 'Открыть в OpenStreetMap' : 'Deschide în OpenStreetMap'}</a>
+              </div>}
               <div className="card p-6">
                 <h2 className="font-semibold text-base mb-3" style={{ color: 'var(--text)' }}>
                   {locale === 'ru' ? 'Описание задачи' : 'Descrierea sarcinii'}
@@ -226,6 +231,7 @@ export default async function JobDetailPage({ params }: Props) {
                         <p className="text-xs font-semibold" style={{ color: 'var(--success)' }}>
                           📞 {locale === 'ru' ? 'Контакты мастера' : 'Contactele meșterului'}
                         </p>
+                        <a href={`tel:${workerContacts.phone.replace(/[^+\d]/g,'')}`} className="text-sm font-medium">{workerContacts.phone}</a>
                         {workerContacts.viber && (
                           <a href={`viber://chat?number=${workerContacts.viber.replace(/\D/g,'')}`} className="text-sm font-medium" style={{ color: 'var(--text)', textDecoration: 'none' }}>
                             💜 Viber: {workerContacts.viber}
@@ -241,11 +247,7 @@ export default async function JobDetailPage({ params }: Props) {
                             💬 WhatsApp: {workerContacts.whatsapp}
                           </a>
                         )}
-                        {!workerContacts.viber && !workerContacts.telegram && !workerContacts.whatsapp && (
-                          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                            {locale === 'ru' ? 'Мастер не указал контакты. Напишите ему в отклике.' : 'Meșterul nu a indicat contacte.'}
-                          </p>
-                        )}
+
                       </div>
                     )}
 

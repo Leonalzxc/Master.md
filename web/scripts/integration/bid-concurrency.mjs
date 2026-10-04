@@ -127,3 +127,25 @@ test('concurrent completions for one worker preserve both reviews and aggregate 
   assert.equal(Number(row.rating_avg),4); assert.equal(row.rating_count,2);
   assert.equal((await db.query("select count(*)::int as n from notifications where type='job_completed'")).rows[0].n,2);
 });
+
+test('free pilot: concurrent retries with zero credits create one free bid', async () => {
+  const {readFileSync}=await import('node:fs');
+  await db.exec(readFileSync(new URL('../../supabase/migrations/202610040002_free_balti_pilot.sql',import.meta.url),'utf8'));
+  await db.query('update profiles_worker set bid_credits=0 where id=$1',[workerId]);
+  const a=await connect(),b=await connect(); await actor(a); await actor(b);
+  await a.query('begin'); const first=(await a.query(submitSql,args())).rows[0];
+  const pending=outcome(b.query(submitSql,args())); await waitForLock(b); await a.query('commit');
+  const result=await pending; assert.ifError(result.error); assert.equal(result.value.rows[0].bid_id,first.bid_id);
+  assert.equal(result.value.rows[0].created,false);
+  assert.deepEqual(await state(db),{credits:0,bids:1,notifications:1});
+});
+test('free pilot: concurrent jobs cannot exceed the daily bid limit', async () => {
+  await db.query(`with added as (insert into jobs(client_id,description,category,city,area)
+    select $1,'Synthetic daily limit job','electric','Бельцы','Центр' from generate_series(1,9) returning id)
+    insert into bids(job_id,worker_id,price,comment) select id,$2,500,'Synthetic daily limit bid' from added`,[clientId,workerId]);
+  const a=await connect(),b=await connect(); await actor(a); await actor(b);
+  await a.query('begin'); await a.query(submitSql,args());
+  const pending=outcome(b.query(submitSql,args(secondJobId))); await waitForLock(b); await a.query('commit');
+  assert.equal((await pending).error?.message,'daily_limit');
+  assert.deepEqual(await state(db),{credits:5,bids:10,notifications:10});
+});

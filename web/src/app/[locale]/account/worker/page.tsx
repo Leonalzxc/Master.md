@@ -1,3 +1,4 @@
+import { getMyWorkerProfile } from '@/lib/supabase/marketplace';
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
@@ -31,7 +32,7 @@ export default async function WorkerDashboard({ params }: Props) {
       .select('*, job:jobs(id, description, category, city, area, status, budget_min, budget_max, created_at)')
       .eq('worker_id', user.id)
       .order('created_at', { ascending: false }),
-    supabase.from('profiles_worker').select('*').eq('id', user.id).single(),
+    getMyWorkerProfile(supabase).then(data => ({data})),
     supabase
       .from('reviews')
       .select('*, author:profiles!reviews_author_id_fkey(name)')
@@ -44,7 +45,6 @@ export default async function WorkerDashboard({ params }: Props) {
 
   // Fetch matching jobs (worker's categories + city, not yet bid on)
   const workerCategories = (worker?.categories ?? []) as string[];
-  const workerAreas = (worker?.areas ?? []) as string[];
   const bidJobIds = new Set(bids.map((b) => b.job?.id).filter(Boolean) as string[]);
 
   let matchingJobs: Job[] = [];
@@ -56,7 +56,7 @@ export default async function WorkerDashboard({ params }: Props) {
       .in('category', workerCategories)
       .order('created_at', { ascending: false })
       .limit(6);
-    if (workerAreas.length > 0) q = q.in('city', workerAreas);
+    q = q.eq('city', 'Бельцы').gt('expires_at', new Date().toISOString());
     const { data: rawMatching } = await q;
     matchingJobs = ((rawMatching ?? []) as Job[]).filter((j) => !bidJobIds.has(j.id));
   }
@@ -153,45 +153,11 @@ export default async function WorkerDashboard({ params }: Props) {
             ))}
           </div>
 
-          {/* Bid credits card */}
-          <div className="card p-5 flex items-center justify-between gap-4 flex-wrap">
-            <div className="flex items-center gap-3">
-              <span style={{ fontSize: 28 }}>💳</span>
-              <div>
-                <p className="font-semibold text-sm" style={{ color: 'var(--text)' }}>
-                  {locale === 'ru' ? 'Кредиты для откликов' : 'Credite pentru oferte'}
-                </p>
-                <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                  {locale === 'ru' ? '1 кредит = 1 отклик на заявку' : '1 credit = 1 ofertă pe cerere'}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="text-center">
-                <div
-                  className="font-bold text-2xl"
-                  style={{ color: (worker?.bid_credits ?? 0) > 0 ? 'var(--accent)' : 'var(--danger)' }}
-                >
-                  {worker?.bid_credits ?? 0}
-                </div>
-                <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                  {locale === 'ru' ? 'кредитов' : 'credite'}
-                </div>
-              </div>
-              <Link
-                href={`/${locale}/credits`}
-                className="text-xs px-3 py-1.5 rounded-full font-semibold"
-                style={{ background: 'var(--accent-dim)', color: 'var(--accent)', textDecoration: 'none' }}
-              >
-                + {locale === 'ru' ? 'Купить' : 'Cumpără'}
-              </Link>
-              {(worker?.bid_credits ?? 0) === 0 && (
-                <span className="text-xs px-3 py-1.5 rounded-full font-semibold"
-                  style={{ background: 'rgba(239,68,68,.1)', color: 'var(--danger)' }}>
-                  {locale === 'ru' ? 'Нет кредитов' : 'Fără credite'}
-                </span>
-              )}
-            </div>
+          <div className="card p-5">
+            <p className="font-semibold">{locale === 'ru' ? 'Бесплатный пилот в Бельцах' : 'Pilot gratuit în Bălți'}</p>
+            <p className="text-sm mt-2" style={{ color: 'var(--text-muted)' }}>
+              {locale === 'ru' ? 'До 10 новых откликов за 24 часа. Кредиты не списываются, пополнение не требуется.' : 'Până la 10 oferte noi în 24 de ore. Creditele nu se deduc; reîncărcarea nu este necesară.'}
+            </p>
           </div>
 
           {/* Matching jobs — relevant new jobs for this worker */}

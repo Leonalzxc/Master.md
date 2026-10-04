@@ -1,3 +1,4 @@
+import { PUBLIC_JOB_COLUMNS } from '@/lib/supabase/marketplace';
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
@@ -37,7 +38,7 @@ export default async function ClientDashboard({ params, searchParams }: Props) {
 
   const { data: rawJobs } = await supabase
     .from('jobs')
-    .select('*, bid_count:bids(count)')
+    .select(`${PUBLIC_JOB_COLUMNS}, bid_count:bids(count)`)
     .eq('client_id', user.id)
     .order('created_at', { ascending: false });
 

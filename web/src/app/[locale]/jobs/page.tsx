@@ -1,3 +1,4 @@
+import { PUBLIC_JOB_COLUMNS } from '@/lib/supabase/marketplace';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import Header from '@/components/layout/Header';
@@ -24,8 +25,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function JobsPage({ params, searchParams }: Props) {
   const { locale } = await params;
-  const { city, category, q, sort, page: pageParam } = await searchParams;
-  const page = Math.max(1, parseInt(pageParam ?? '1', 10));
+  const { category, q, sort, page: pageParam } = await searchParams;
+  const city = CITIES[0];
+  const requestedPage = Number(pageParam ?? '1');
+  const page = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? Math.min(requestedPage, 1000) : 1;
   const from = (page - 1) * PAGE_SIZE;
   const to   = from + PAGE_SIZE; // fetch PAGE_SIZE+1 to detect if next page exists
 
@@ -36,8 +39,8 @@ export default async function JobsPage({ params, searchParams }: Props) {
 
   let query = supabase
     .from('jobs')
-    .select('*')
-    .eq('status', 'active');
+    .select(PUBLIC_JOB_COLUMNS)
+    .eq('status', 'active').gt('expires_at', new Date(now).toISOString());
 
   if (city) query = query.eq('city', city);
   if (category) query = query.eq('category', category);

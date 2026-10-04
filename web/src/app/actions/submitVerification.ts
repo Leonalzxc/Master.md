@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { getMyWorkerProfile } from '@/lib/supabase/marketplace';
 import { createClient } from '@/lib/supabase/server';
 
 export async function submitVerification(formData: FormData) {
@@ -10,11 +11,7 @@ export async function submitVerification(formData: FormData) {
   if (!user) throw new Error('Not authenticated');
 
   // Check they have a worker profile with at least one category
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: pw } = await (supabase.from('profiles_worker') as any)
-    .select('id, categories, verification_submitted_at, verified')
-    .eq('id', user.id)
-    .single();
+  const pw = await getMyWorkerProfile(supabase);
 
   if (!pw) throw new Error('Worker profile not found');
   if (pw.verified) throw new Error('Already verified');

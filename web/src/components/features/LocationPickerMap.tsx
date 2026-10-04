@@ -1,143 +1,53 @@
 'use client';
-
-import { useState, useCallback, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
-import L, { type LatLng } from 'leaflet';
+import { useState, useEffect, useRef } from 'react';
+import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
+import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-
-// Moldova center
-const CENTER: [number, number] = [47.4116, 28.3699];
-
-async function reverseGeocode(lat: number, lng: number): Promise<{ city: string; area: string }> {
-  try {
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=ru`,
-    );
-    const d = await res.json();
-    const a = d.address ?? {};
-    const city = a.city ?? a.town ?? a.village ?? a.county ?? '';
-    const area = a.suburb ?? a.neighbourhood ?? a.city_district ?? a.quarter ?? city ?? '';
-    return { city, area };
-  } catch {
-    return { city: '', area: '' };
-  }
-}
-
-function MapClick({ onPick }: { onPick: (ll: LatLng) => void }) {
-  useMapEvents({ click: (e) => onPick(e.latlng) });
-  return null;
-}
-
+import { PILOT_CENTER, PILOT_BOUNDS, PILOT_CITY, isPilotLocation } from '@/lib/pilot';
 export interface LocationPickerMapProps {
-  lat: number | null;
-  lng: number | null;
+  lat: number | null; lng: number | null;
   onPick: (lat: number, lng: number, area: string, city: string) => void;
   locale: string;
 }
-
-export default function LocationPickerMap({ lat, lng, onPick, locale }: LocationPickerMapProps) {
-  const [gpsLoading, setGpsLoading] = useState(false);
-  const [gpsError, setGpsError] = useState('');
-
-  useEffect(() => {
-    // Fix webpack-broken default icon paths
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    delete (L.Icon.Default.prototype as any)._getIconUrl;
-    L.Icon.Default.mergeOptions({
-      iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-      iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-      shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-    });
-  }, []);
-
-  const pinIcon = L.divIcon({
-    html: `<div style="width:22px;height:32px"><div style="width:22px;height:22px;background:#0ea5e9;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid white;box-shadow:0 2px 10px rgba(0,0,0,.35)"></div></div>`,
-    iconSize: [22, 32],
-    iconAnchor: [11, 32],
-    className: '',
-  });
-
-  const handleClick = useCallback(async (ll: LatLng) => {
-    const { city, area } = await reverseGeocode(ll.lat, ll.lng);
-    onPick(ll.lat, ll.lng, area, city);
-  }, [onPick]);
-
-  const handleGps = () => {
-    if (!navigator.geolocation) {
-      setGpsError(locale === 'ru' ? 'GPS недоступен в браузере' : 'GPS indisponibil');
-      return;
-    }
-    setGpsLoading(true);
-    setGpsError('');
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const { city, area } = await reverseGeocode(pos.coords.latitude, pos.coords.longitude);
-        onPick(pos.coords.latitude, pos.coords.longitude, area, city);
-        setGpsLoading(false);
-      },
-      () => {
-        setGpsError(locale === 'ru'
-          ? 'Не удалось определить местоположение'
-          : 'Locația nu a putut fi determinată');
-        setGpsLoading(false);
-      },
-      { timeout: 10000 },
-    );
+function MapControl({ lat, lng, onPick }: Pick<LocationPickerMapProps, 'lat' | 'lng'> & {onPick: (lat: number,lng: number) => void}) {
+  const map = useMap();
+  useMapEvents({ click: event => onPick(event.latlng.lat,event.latlng.lng) });
+  useEffect(() => { if (lat !== null && lng !== null) map.flyTo([lat,lng],Math.max(map.getZoom(),14),{duration:0.35}); },[lat,lng,map]);
+  return null;
+}
+const pin = L.divIcon({ html: '<div style="width:20px;height:20px;background:#0ea5e9;border:3px solid white;border-radius:50%;box-shadow:0 1px 6px #333"></div>', iconSize:[20,20],iconAnchor:[10,10],className:'' });
+export default function LocationPickerMap({lat,lng,onPick,locale}: LocationPickerMapProps) {
+  const [loading,setLoading] = useState(false);
+  const [error,setError] = useState('');
+  const version = useRef(0);
+  useEffect(() => () => { version.current++; },[]);
+  const pick = (a: number,b: number) => {
+    if (!isPilotLocation(a,b)) { setError(locale === 'ru' ? 'Пилот доступен в Бельцах. Выберите точку в зоне карты.' : 'Pilotul este disponibil în Bălți. Alegeți un punct în zona hărții.'); return; }
+    setError(''); onPick(a,b,'',PILOT_CITY);
   };
-
-  return (
-    <div>
-      <div style={{
-        borderRadius: 'var(--radius-md)',
-        overflow: 'hidden',
-        border: '1.5px solid var(--glass-border-strong)',
-      }}>
-        <MapContainer
-          center={lat !== null && lng !== null ? [lat, lng] : CENTER}
-          zoom={7}
-          style={{ height: 260, width: '100%' }}
-        >
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
-          <MapClick onPick={handleClick} />
-          {lat !== null && lng !== null && (
-            <Marker position={[lat, lng]} icon={pinIcon} />
-          )}
-        </MapContainer>
-      </div>
-
-      <div className="flex items-center justify-between gap-2 mt-2">
-        <p style={{ fontSize: 12, color: lat !== null ? 'var(--success)' : 'var(--text-muted)', lineHeight: 1.4 }}>
-          {lat !== null
-            ? `📍 ${lat.toFixed(5)}, ${lng!.toFixed(5)}`
-            : (locale === 'ru'
-                ? '👆 Нажмите на карту чтобы отметить место'
-                : '👆 Apăsați pe hartă pentru a marca locul')}
-        </p>
-        <button
-          type="button"
-          onClick={handleGps}
-          disabled={gpsLoading}
-          style={{
-            display: 'inline-flex', alignItems: 'center', gap: 5,
-            height: 32, padding: '0 12px',
-            border: '1.5px solid var(--glass-border-strong)',
-            borderRadius: 'var(--radius-sm)',
-            background: 'var(--bg-elevated)',
-            color: 'var(--text)', fontSize: 12, fontWeight: 600,
-            cursor: gpsLoading ? 'not-allowed' : 'pointer',
-            opacity: gpsLoading ? 0.6 : 1,
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {gpsLoading ? '⏳' : '📡'} {locale === 'ru' ? 'Моё место' : 'Locul meu'}
-        </button>
-      </div>
-      {gpsError && (
-        <p style={{ fontSize: 12, color: 'var(--danger)', marginTop: 4 }}>{gpsError}</p>
-      )}
+  function gps() {
+    if (!navigator.geolocation) { setError(locale === 'ru' ? 'GPS недоступен. Отметьте место вручную.' : 'GPS indisponibil. Marcați locul manual.'); return; }
+    const request=++version.current; setLoading(true); setError('');
+    navigator.geolocation.getCurrentPosition(position => {
+      if (request !== version.current) return;
+      pick(position.coords.latitude,position.coords.longitude); setLoading(false);
+    }, () => {
+      if (request !== version.current) return;
+      setError(locale === 'ru' ? 'Не удалось определить место. Отметьте его вручную.' : 'Locația nu a putut fi determinată. Marcați-o manual.'); setLoading(false);
+    },{timeout:10000,maximumAge:0,enableHighAccuracy:true});
+  }
+  return <div>
+    <div className="rounded-xl overflow-hidden border" style={{isolation:'isolate'}}>
+      <MapContainer center={PILOT_CENTER} zoom={13} maxBounds={PILOT_BOUNDS} maxBoundsViscosity={1} minZoom={11} style={{height:280,width:'100%'}}>
+        <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+        <MapControl lat={lat} lng={lng} onPick={(a,b) => { version.current++; setLoading(false); pick(a,b); }} />
+        {lat !== null && lng !== null && <Marker position={[lat,lng]} icon={pin} />}
+      </MapContainer>
     </div>
-  );
+    <div className="flex flex-wrap gap-2 items-center justify-between mt-3">
+      <p className="text-xs">{lat !== null ? (locale === 'ru' ? 'Точка выбрана · проверьте положение' : 'Punct selectat · verificați poziția') : (locale === 'ru' ? 'Нажмите на карту' : 'Apăsați pe hartă')}</p>
+      <button type="button" className="btn-secondary" disabled={loading} onClick={gps}>{loading ? '…' : (locale === 'ru' ? 'Определить по GPS' : 'Detectează prin GPS')}</button>
+    </div>
+    {error && <p role="alert" className="text-sm mt-2" style={{color:'var(--danger)'}}>{error}</p>}
+  </div>;
 }

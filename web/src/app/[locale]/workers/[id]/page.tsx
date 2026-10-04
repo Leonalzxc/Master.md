@@ -1,3 +1,4 @@
+import { PUBLIC_WORKER_COLUMNS } from '@/lib/supabase/marketplace';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import Link from 'next/link';
@@ -53,7 +54,7 @@ export default async function WorkerProfilePage({ params }: Props) {
   const supabase = await createClient();
 
   const { data: wr, error } = await supabase
-    .from('profiles').select(`${PUBLIC_PROFILE_COLUMNS},profiles_worker(*)`).eq('id', id).single();
+    .from('profiles').select(`${PUBLIC_PROFILE_COLUMNS},profiles_worker(${PUBLIC_WORKER_COLUMNS})`).eq('id', id).single();
   if (error || !wr) notFound();
   const worker = wr as unknown as WorkerRow;
   const pw = worker.profiles_worker;

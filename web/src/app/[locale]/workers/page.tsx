@@ -1,3 +1,4 @@
+import { PUBLIC_WORKER_COLUMNS } from '@/lib/supabase/marketplace';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import Header from '@/components/layout/Header';
@@ -21,14 +22,15 @@ type WorkerRow = PublicProfile & { profiles_worker: ProfileWorker | null };
 
 export default async function WorkersPage({ params, searchParams }: Props) {
   const { locale } = await params;
-  const { city, category, q } = await searchParams;
+  const { category, q } = await searchParams;
+  const city = CITIES[0];
 
   const supabase = await createClient();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let query = (supabase as any)
     .from('profiles')
-    .select(`${PUBLIC_PROFILE_COLUMNS},profiles_worker(*)`)
+    .select(`${PUBLIC_PROFILE_COLUMNS},profiles_worker(${PUBLIC_WORKER_COLUMNS})`)
     .eq('role', 'worker')
     .order('name');
   // Apply city filter at DB level for efficiency
@@ -61,7 +63,7 @@ export default async function WorkersPage({ params, searchParams }: Props) {
                   {locale === 'ru' ? 'Мастера' : 'Meșteri'}
                 </h1>
                 <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
-                  {workers.length} {locale === 'ru' ? 'мастеров в Молдове' : 'meșteri în Moldova'}
+                  {workers.length} {locale === 'ru' ? 'мастеров в Бельцах' : 'meșteri în Bălți'}
                 </p>
               </div>
               <Link href={`/${locale}/request/new`} className="btn-primary" style={{ fontSize: 14 }}>

@@ -43,16 +43,16 @@ export default async function HomePage({ params }: Props) {
   try {
     const supabase = await createClient();
     const [wRes, jRes, rRes] = await Promise.all([
-      supabase.from('profiles_worker').select('id', { count: 'exact', head: true }),
-      supabase.from('jobs').select('id', { count: 'exact', head: true }).eq('status', 'active'),
+      supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role','worker').eq('city','Бельцы').is('blocked_at',null),
+      supabase.from('jobs').select('id', { count: 'exact', head: true }).eq('status', 'active').eq('city','Бельцы').gt('expires_at',new Date().toISOString()),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (supabase.from('profiles_worker') as any).select('rating_avg').gt('rating_count', 0),
+      (supabase.from('reviews') as any).select('rating,job:jobs!inner(city,status)').eq('job.city','Бельцы').eq('job.status','done'),
     ]);
     workerCount = wRes.count;
     activeJobCount = jRes.count;
-    const rows = ((rRes.data ?? []) as { rating_avg: number }[]);
+    const rows = ((rRes.data ?? []) as { rating: number }[]);
     if (rows.length > 0) {
-      const sum = rows.reduce((s, r) => s + r.rating_avg, 0);
+      const sum = rows.reduce((s, r) => s + r.rating, 0);
       avgRating = (sum / rows.length).toFixed(1);
     }
   } catch {
@@ -61,12 +61,12 @@ export default async function HomePage({ params }: Props) {
 
   const stats = [
     {
-      value: workerCount ? `${workerCount}` : '—',
+      value: workerCount !== null ? `${workerCount}` : '—',
       labelRu: 'мастеров на платформе',
       labelRo: 'meșteri pe platformă',
     },
     {
-      value: activeJobCount ? `${activeJobCount}` : '—',
+      value: activeJobCount !== null ? `${activeJobCount}` : '—',
       labelRu: 'активных заявок',
       labelRo: 'cereri active',
     },
@@ -138,7 +138,7 @@ function HeroSection({ locale }: { locale: string }) {
               }}
             >
               <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#38bdf8', display: 'inline-block' }} />
-              {locale === 'ru' ? 'По всей Молдове' : 'În toată Moldova'}
+              {locale === 'ru' ? 'Бесплатный пилот · Бельцы' : 'Pilot gratuit · Bălți'}
             </div>
 
             <h1
@@ -189,83 +189,12 @@ function HeroSection({ locale }: { locale: string }) {
             </div>
           </div>
 
-          {/* Right: floating UI mock — visible on md+ */}
-          <div
-            className="hidden md:flex"
-            style={{ flexDirection: 'column', gap: 12, width: 280, flexShrink: 0 }}
-          >
-            {/* Worker card */}
-            <div style={{
-              background: 'rgba(255,255,255,.07)',
-              border: '1px solid rgba(255,255,255,.12)',
-              borderRadius: 16,
-              padding: '14px 16px',
-              backdropFilter: 'blur(12px)',
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                <div style={{
-                  width: 38, height: 38, borderRadius: '50%',
-                  background: 'linear-gradient(135deg,#38bdf8,#0ea5e9)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 16, fontWeight: 700, color: '#fff', flexShrink: 0,
-                }}>А</div>
-                <div>
-                  <div style={{ color: '#fff', fontWeight: 600, fontSize: 13 }}>
-                    {locale === 'ru' ? 'Андрей М.' : 'Andrei M.'}
-                  </div>
-                  <div style={{ color: 'rgba(255,255,255,.5)', fontSize: 11 }}>
-                    {locale === 'ru' ? 'Электрика' : 'Electrică'}
-                  </div>
-                </div>
-                <div style={{ marginLeft: 'auto', color: '#fbbf24', fontSize: 12, fontWeight: 600 }}>★ 4.9</div>
-              </div>
-              <div style={{
-                background: 'rgba(14,165,233,.15)', borderRadius: 8,
-                padding: '6px 10px', fontSize: 12, color: '#7dd3fc',
-              }}>
-                {locale === 'ru' ? '✓ 47 выполненных заказов' : '✓ 47 comenzi finalizate'}
-              </div>
-            </div>
-
-            {/* Job card */}
-            <div style={{
-              background: 'rgba(255,255,255,.07)',
-              border: '1px solid rgba(255,255,255,.12)',
-              borderRadius: 16,
-              padding: '14px 16px',
-              backdropFilter: 'blur(12px)',
-            }}>
-              <div style={{ color: 'rgba(255,255,255,.5)', fontSize: 11, marginBottom: 4 }}>
-                {locale === 'ru' ? 'Новая заявка' : 'Cerere nouă'}
-              </div>
-              <div style={{ color: '#fff', fontWeight: 600, fontSize: 13, marginBottom: 6 }}>
-                {locale === 'ru' ? 'Заменить проводку в квартире' : 'Înlocuire instalație electrică'}
-              </div>
-              <div style={{ display: 'flex', gap: 6 }}>
-                <span style={{
-                  background: 'rgba(251,191,36,.15)', color: '#fbbf24',
-                  borderRadius: 6, padding: '3px 8px', fontSize: 11, fontWeight: 500,
-                }}>⚡ {locale === 'ru' ? 'Срочно' : 'Urgent'}</span>
-                <span style={{
-                  background: 'rgba(255,255,255,.08)', color: 'rgba(255,255,255,.6)',
-                  borderRadius: 6, padding: '3px 8px', fontSize: 11,
-                }}>3 000–6 000 MDL</span>
-              </div>
-            </div>
-
-            {/* Mini stat */}
-            <div style={{
-              background: 'rgba(14,165,233,.12)',
-              border: '1px solid rgba(14,165,233,.2)',
-              borderRadius: 12,
-              padding: '10px 14px',
-              display: 'flex', alignItems: 'center', gap: 8,
-            }}>
-              <span style={{ fontSize: 18 }}>⚡</span>
-              <span style={{ color: '#7dd3fc', fontSize: 12, fontWeight: 500 }}>
-                {locale === 'ru' ? 'Первый отклик за 15 минут' : 'Primul răspuns în 15 minute'}
-              </span>
-            </div>
+          <div className="hidden md:flex flex-col gap-4 rounded-2xl p-6" style={{width:280,border:'1px solid rgba(255,255,255,.15)',background:'rgba(255,255,255,.07)',color:'#fff'}}>
+            <p className="font-semibold">{locale === 'ru' ? 'Как проходит заказ' : 'Cum funcționează o lucrare'}</p>
+            <p className="text-sm">{locale === 'ru' ? '1. Опишите работу и отметьте место' : '1. Descrieți lucrarea și marcați locul'}</p>
+            <p className="text-sm">{locale === 'ru' ? '2. Сравните отклики и выберите мастера' : '2. Comparați ofertele și alegeți meșterul'}</p>
+            <p className="text-sm">{locale === 'ru' ? '3. Выполните работу и оставьте отзыв' : '3. Finalizați lucrarea și lăsați o recenzie'}</p>
+            <p className="text-xs" style={{color:'#7dd3fc'}}>{locale === 'ru' ? 'Бельцы · публикация и отклики бесплатны' : 'Bălți · cererile și ofertele sunt gratuite'}</p>
           </div>
         </div>
       </div>

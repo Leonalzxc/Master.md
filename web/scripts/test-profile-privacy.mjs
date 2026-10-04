@@ -183,13 +183,23 @@ test('createJob action inserts against the real jobs schema without a title colu
       if (name.endsWith('/supabase/admin')) return { createAdminClient: () => { throw new Error('Notifications disabled in test'); } };
       if (name.endsWith('/telegram')) return { sendTelegramMessage() { throw new Error('No external messages allowed'); } };
       if (name.endsWith('/mock/data')) return { CATEGORY_LABELS_RU: {} };
+      if (name === '@/lib/jobs') {
+        const compileDomain = (file, imports) => {
+          const code = ts.transpileModule(readFileSync(resolve(root,file),'utf8'), {compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText;
+          const result={exports:{}}; vm.runInNewContext(code,{module:result,exports:result.exports,require:imports,Number}); return result.exports;
+        };
+        const pilot=compileDomain('src/lib/pilot.ts',require);
+        return compileDomain('src/lib/jobs.ts',dep => dep === './pilot' ? pilot : require(dep));
+      }
       throw new Error('Unexpected dependency: ' + name);
     },
   });
-  await assert.rejects(mod.exports.createJob({
+  const result = await mod.exports.createJob({
     category: 'electric', description: 'Real schema creation regression test',
-    city: 'Бельцы', area: 'Центр', lat: null, lng: null, budget: '100',
+    city: 'Бельцы', area: 'Центр', lat: 47.76, lng: 27.93, budget: '100',
     urgent: false, needsQuote: false, photos: [], locale: 'ru',
-  }), /REDIRECT:\/ru\/jobs\//);
+  });
+  assert.equal(result.ok,true);
+  assert.equal(result.jobId,inserted);
   assert.ok(inserted);
 });

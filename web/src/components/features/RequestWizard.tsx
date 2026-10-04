@@ -1,5 +1,8 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
+import { isPilotLocation, PILOT_CITY } from '@/lib/pilot';
+import { jobErrorText, type JobInput } from '@/lib/jobs';
 import { useState } from 'react';
 import { CATEGORY_LABELS_RU, CATEGORY_LABELS_RO, CATEGORY_ICONS, CITIES, type Category } from '@/lib/mock/data';
 import { createJob } from '@/app/actions/createJob';
@@ -37,6 +40,7 @@ const INITIAL: FormData = {
 interface Props { locale: string }
 
 export default function RequestWizard({ locale }: Props) {
+  const router = useRouter();
   const [step, setStep] = useState(0);
   const [form, setForm] = useState<FormData>(INITIAL);
   const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({});
@@ -53,8 +57,10 @@ export default function RequestWizard({ locale }: Props) {
     if (step === 0 && !form.category) e.category = locale === 'ru' ? 'Выберите категорию' : 'Alegeți categoria';
     if (step === 1 && form.description.trim().length < 20)
       e.description = locale === 'ru' ? 'Минимум 20 символов' : 'Minim 20 caractere';
-    if (step === 2 && !form.city)
-      e.lat = locale === 'ru' ? 'Выберите город' : 'Alegeți orașul';
+    if (step === 2 && !isPilotLocation(form.lat, form.lng))
+      e.lat = locale === 'ru' ? 'Отметьте точку в Бельцах на карте' : 'Marcați un punct în Bălți pe hartă';
+    if (step === 2 && form.budget && (!Number.isFinite(Number(form.budget)) || Number(form.budget) < 0 || Number(form.budget) > 1_000_000_000))
+      e.budget = locale === 'ru' ? 'Укажите корректный бюджет' : 'Indicați un buget valid';
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -73,23 +79,29 @@ export default function RequestWizard({ locale }: Props) {
     setLoading(true);
     setServerError('');
     try {
-      await createJob({
-        category: form.category as string,
+      const result = await createJob({
+        category: form.category as JobInput['category'],
         description: form.description,
-        city: form.city || CITIES[0],
+        city: PILOT_CITY,
         area: form.area || form.city || CITIES[0],
-        lat: form.lat ?? 0,
-        lng: form.lng ?? 0,
+        lat: form.lat!,
+        lng: form.lng!,
         budget: form.budget,
         urgent: form.urgent,
         needsQuote: form.needsQuote,
         photos: form.photos,
-        locale,
+        locale: locale === 'ro' ? 'ro' : 'ru',
       });
-    } catch (err) {
-      setServerError(err instanceof Error ? err.message : 'Ошибка. Попробуйте снова.');
-      setLoading(false);
-    }
+      if (!result.ok) {
+        if (result.error === 'not_authenticated') router.push(`/${locale}/auth?next=/${locale}/request/new`);
+        else setServerError(jobErrorText(result.error, locale));
+        return;
+      }
+      router.push(`/${locale}/jobs/${result.jobId}`);
+      router.refresh();
+    } catch {
+      setServerError(locale === 'ru' ? 'Не удалось получить ответ. Проверьте «Мои заявки» перед повторной публикацией.' : 'Nu am primit răspunsul. Verificați cererile dvs. înainte de a publica din nou.');
+    } finally { setLoading(false); }
   }
 
   const isLastStep = step === STEPS.length - 1;
@@ -216,6 +228,7 @@ function Step2Description({ form, set, errors, locale }: StepProps) {
       <div>
         <label className="field-label">{locale === 'ru' ? 'Описание работы *' : 'Descrierea lucrării *'}</label>
         <textarea
+          maxLength={5000}
           rows={4}
           value={form.description}
           onChange={(e) => set('description', e.target.value)}
@@ -279,17 +292,17 @@ function Step3Location({ form, set, errors, locale }: StepProps) {
       {/* Map to pin exact location */}
       <div>
         <label className="field-label" style={{ marginBottom: 6 }}>
-          {locale === 'ru' ? 'Точное место (необязательно)' : 'Locul exact (opțional)'}
+          {locale === 'ru' ? 'Отметьте место на карте *' : 'Marcați locul pe hartă *'}
         </label>
         <LocationPicker
           lat={form.lat}
           lng={form.lng}
           locale={locale}
-          onPick={(lat, lng, area, city) => {
+          onPick={(lat, lng, area) => {
             set('lat', lat);
             set('lng', lng);
             set('area', area);
-            if (city) set('city', city);
+            set('city', PILOT_CITY);
           }}
         />
         {form.area && (
@@ -299,12 +312,13 @@ function Step3Location({ form, set, errors, locale }: StepProps) {
         )}
       </div>
       {errors.lat && <FieldError>{errors.lat}</FieldError>}
+      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{locale === 'ru' ? 'GPS запрашивается только по кнопке. Точное место доступно вам и выбранному мастеру.' : 'GPS este solicitat doar la apăsarea butonului. Locul exact este disponibil dvs. și meșterului ales.'}</p>
 
       <div>
         <label className="field-label">{locale === 'ru' ? 'Бюджет (необязательно)' : 'Buget (opțional)'}</label>
         <div className="relative">
           <input
-            type="number"
+            type="number" min="0" max="1000000000" step="0.01"
             value={form.budget}
             onChange={(e) => set('budget', e.target.value)}
             placeholder={locale === 'ru' ? 'например 2000' : 'ex. 2000'}
@@ -313,6 +327,7 @@ function Step3Location({ form, set, errors, locale }: StepProps) {
           />
           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm" style={{ color: 'var(--text-muted)' }}>MDL</span>
         </div>
+        {errors.budget && <FieldError>{errors.budget}</FieldError>}
       </div>
     </div>
   );

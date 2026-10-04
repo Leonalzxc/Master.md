@@ -11,7 +11,7 @@ export const bidInputSchema = z.object({
 export type BidInput = z.input<typeof bidInputSchema>;
 export const bidErrors = [
   'not_authenticated', 'not_worker', 'account_blocked', 'own_job',
-  'job_unavailable', 'no_credits', 'invalid_input', 'temporarily_unavailable',
+  'job_unavailable', 'no_credits', 'daily_limit', 'invalid_input', 'temporarily_unavailable',
 ] as const;
 export type BidError = typeof bidErrors[number];
 export type BidResult =

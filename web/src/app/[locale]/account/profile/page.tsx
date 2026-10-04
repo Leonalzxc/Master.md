@@ -1,3 +1,4 @@
+import { getMyWorkerProfile } from '@/lib/supabase/marketplace';
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
@@ -6,7 +7,6 @@ import Footer from '@/components/layout/Footer';
 import ProfileForm from '@/components/features/ProfileForm';
 import { createClient } from '@/lib/supabase/server';
 import { ensureMyProfile } from '@/lib/supabase/ensure-profile';
-import type { ProfileWorker } from '@/lib/supabase/types';
 
 type Props = { params: Promise<{ locale: string }> };
 
@@ -24,8 +24,7 @@ export default async function ProfilePage({ params }: Props) {
 
   const profile = await ensureMyProfile(supabase, user);
 
-  const { data: rawWorker } = await supabase.from('profiles_worker').select('*').eq('id', user.id).single();
-  const workerProfile = rawWorker as ProfileWorker | null;
+  const workerProfile = await getMyWorkerProfile(supabase);
 
   const isWorker = profile.role === 'worker';
   const t = (ru: string, ro: string) => locale === 'ru' ? ru : ro;

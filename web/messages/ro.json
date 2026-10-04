@@ -10,7 +10,7 @@
   "home": {
     "heroTitle": "Găsește un meșter pentru reparații și construcții",
     "heroHighlight": "în 2 minute",
-    "heroSubtitle": "Descrie sarcina — primești 3–5 oferte de la meșteri din apropiere. Gratuit pentru clienți.",
+    "heroSubtitle": "Găsiți un meșter sau o lucrare în Bălți. Cererile și ofertele sunt gratuite în timpul pilotului.",
     "ctaClient": "Creează cerere",
     "ctaWorker": "Sunt meșter, vreau comenzi",
     "howItWorks": "Cum funcționează",
@@ -117,7 +117,7 @@
     "moderation": "Reguli de moderare",
     "support": "Suport",
     "forWorkers": "Pentru meșteri",
-    "pricing": "Tarife",
+    "pricing": "Pilot gratuit",
     "rights": "Toate drepturile rezervate"
   },
   "listings": {

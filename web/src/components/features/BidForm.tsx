@@ -4,16 +4,16 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { createBid } from '@/app/actions/createBid';
+import { PILOT_BID_LIMIT } from '@/lib/pilot';
 import type { BidError } from '@/lib/bids';
 
-type AuthState = 'loading' | 'guest' | 'not_worker' | 'ready' | 'already_bid' | 'no_credits' | 'unavailable';
+type AuthState = 'loading' | 'guest' | 'not_worker' | 'ready' | 'already_bid' | 'unavailable';
 
 interface Props { jobId: string; locale: string; expired?: boolean }
 
 export default function BidForm({ jobId, locale, expired = false }: Props) {
   const [checkVersion, setCheckVersion] = useState(0);
   const [authState, setAuthState] = useState<AuthState>('loading');
-  const [bidCredits, setBidCredits] = useState<number | null>(null);
   const [open, setOpen] = useState(false);
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -34,19 +34,18 @@ export default function BidForm({ jobId, locale, expired = false }: Props) {
       const [profileResult, existingResult, workerResult] = await Promise.all([
         supabase.from('profiles').select('role,blocked_at').eq('id', user.id).maybeSingle(),
         supabase.from('bids').select('id').eq('job_id', jobId).eq('worker_id', user.id).maybeSingle(),
-        supabase.from('profiles_worker').select('bid_credits').eq('id', user.id).maybeSingle(),
+        supabase.from('profiles_worker').select('id').eq('id', user.id).maybeSingle(),
       ]);
       if (!active) return;
       if (profileResult.error || existingResult.error || workerResult.error) {
         setAuthState('unavailable'); return;
       }
       const profile = profileResult.data as { role: string; blocked_at: string | null } | null;
-      const worker = workerResult.data as { bid_credits: number } | null;
+      const worker = workerResult.data as { id: string } | null;
       if (profile?.blocked_at) { setAuthState('unavailable'); return; }
       if (existingResult.data) { setAuthState('already_bid'); return; }
       if (profile?.role !== 'worker' || !worker) { setAuthState('not_worker'); return; }
-      setBidCredits(worker.bid_credits);
-      setAuthState(worker.bid_credits < 1 ? 'no_credits' : 'ready');
+      setAuthState('ready');
     }
     check().catch(() => { if (active) setAuthState('unavailable'); });
     return () => { active = false; };
@@ -59,7 +58,8 @@ export default function BidForm({ jobId, locale, expired = false }: Props) {
       account_blocked: ['Аккаунт заблокирован. Обратитесь в поддержку.', 'Contul este blocat. Contactați asistența.'],
       own_job: ['Нельзя откликнуться на свою заявку', 'Nu puteți oferta propria cerere'],
       job_unavailable: ['Заявка уже закрыта или срок истёк', 'Cererea este închisă sau a expirat'],
-      no_credits: ['Недостаточно кредитов', 'Credite insuficiente'],
+      no_credits: ['Сервис обновляется. Повторите позже.', 'Serviciul se actualizează. Reîncercați mai târziu.'],
+      daily_limit: [`Лимит: ${PILOT_BID_LIMIT} новых откликов за 24 часа. Повторите позже.`, `Limită: ${PILOT_BID_LIMIT} oferte noi în 24 de ore. Reîncercați mai târziu.`],
       invalid_input: ['Проверьте цену, комментарий и дату начала', 'Verificați prețul, comentariul și data'],
       temporarily_unavailable: ['Отклики временно недоступны. Попробуйте позже.', 'Ofertele sunt temporar indisponibile. Reîncercați mai târziu.'],
     };
@@ -83,17 +83,15 @@ export default function BidForm({ jobId, locale, expired = false }: Props) {
     try {
       const result = await createBid({ jobId, price: Number(form.price), comment: form.comment, startDate: form.startDate, locale: locale === 'ro' ? 'ro' : 'ru' });
       if (result.ok) {
-        setBidCredits(result.creditsRemaining);
         setSent(true);
       } else {
         if (result.error === 'not_authenticated') setAuthState('guest');
         else if (result.error === 'not_worker') setAuthState('not_worker');
-        else if (result.error === 'no_credits') setAuthState('no_credits');
         else setServerError(errorText(result.error));
       }
     } catch {
       // A lost response may follow a committed bid; retrying is idempotent.
-      setServerError(t('Не удалось получить ответ. Можно повторить — повторный отклик не спишет ещё один кредит.', 'Nu am primit răspunsul. Puteți reîncerca fără o a doua debitare.'));
+      setServerError(t('Не удалось получить ответ. Можно повторить — второй отклик не создастся.', 'Nu am primit răspunsul. Puteți reîncerca fără a crea o ofertă dublă.'));
     } finally {
       setLoading(false);
     }
@@ -119,25 +117,6 @@ export default function BidForm({ jobId, locale, expired = false }: Props) {
         {t('Повторить проверку', 'Reîncearcă')}
       </button>
     </div>;
-  }
-
-  if (authState === 'no_credits') {
-    return (
-      <div className="rounded-xl p-4 flex flex-col gap-3 text-sm" style={{ background: 'rgba(239,68,68,.06)', border: '1px solid rgba(239,68,68,.2)' }}>
-        <div className="flex items-center gap-2">
-          <span className="text-xl">💳</span>
-          <p className="font-semibold" style={{ color: 'var(--danger)' }}>
-            {t('Нет кредитов для отклика', 'Nu aveți credite pentru ofertă')}
-          </p>
-        </div>
-        <p style={{ color: 'var(--text-muted)' }}>
-          {t('Пополните баланс в личном кабинете', 'Reîncărcați soldul în contul personal')}
-        </p>
-        <Link href={`/${locale}/credits`} className="btn-primary text-center" style={{ fontSize: 13, height: 36, textDecoration: 'none' }}>
-          💳 {t('Купить кредиты →', 'Cumpără credite →')}
-        </Link>
-      </div>
-    );
   }
 
   if (authState === 'guest') {
@@ -195,12 +174,9 @@ export default function BidForm({ jobId, locale, expired = false }: Props) {
         <button onClick={() => setOpen(true)} className="btn-primary w-full" style={{ justifyContent: 'center', fontSize: 15, height: 48 }}>
           {t('Откликнуться на заявку', 'Trimite oferta')}
         </button>
-        {bidCredits !== null && (
-          <p className="text-xs text-center" style={{ color: 'var(--text-muted)' }}>
-            💳 {t(`Баланс: ${bidCredits} кредит${bidCredits === 1 ? '' : bidCredits < 5 ? 'а' : 'ов'}`, `Credite: ${bidCredits}`)}
-            {' · '}{t('Отклик стоит 1 кредит', 'O ofertă costă 1 credit')}
-          </p>
-        )}
+        <p className="text-xs text-center" style={{ color: 'var(--text-muted)' }}>
+          {t(`Бесплатный пилот · до ${PILOT_BID_LIMIT} новых откликов за 24 часа`, `Pilot gratuit · până la ${PILOT_BID_LIMIT} oferte noi în 24 de ore`)}
+        </p>
       </div>
     );
   }

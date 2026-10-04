@@ -22,14 +22,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE_URL}/${locale}`, lastModified: new Date(), changeFrequency: 'daily' as const, priority: 1.0 },
     url(`/${locale}/workers`),
     url(`/${locale}/jobs`),
-    url(`/${locale}/auth`),
   ]);
 
   // Dynamic: active jobs
   const { data: rawJobs } = await supabase
     .from('jobs')
     .select('id, created_at')
-    .eq('status', 'active')
+.eq('status', 'active').eq('city','Бельцы').gt('expires_at',new Date().toISOString())
     .order('created_at', { ascending: false })
     .limit(200);
   const jobs = (rawJobs ?? []) as { id: string; created_at: string }[];
@@ -45,8 +44,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // Dynamic: worker profiles
   const { data: rawWorkers } = await supabase
-    .from('profiles_worker')
-    .select('id')
+    .from('profiles')
+    .select('id').eq('role','worker').eq('city','Бельцы').is('blocked_at',null)
     .limit(500);
   const workers = (rawWorkers ?? []) as { id: string }[];
 
