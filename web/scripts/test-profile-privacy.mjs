@@ -181,6 +181,7 @@ test('createJob action inserts against the real jobs schema without a title colu
       if (name === 'next/cache') return { revalidatePath() {} };
       if (name.endsWith('/supabase/server')) return { createClient: async () => supabase };
       if (name.endsWith('/supabase/admin')) return { createAdminClient: () => { throw new Error('Notifications disabled in test'); } };
+      if (name === '@/lib/telegram-security') return { escapeTelegramHtml: value => value };
       if (name.endsWith('/telegram')) return { sendTelegramMessage() { throw new Error('No external messages allowed'); } };
       if (name.endsWith('/mock/data')) return { CATEGORY_LABELS_RU: {} };
       if (name === '@/lib/jobs') {

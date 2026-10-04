@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { escapeTelegramHtml } from '@/lib/telegram-security';
 import { sendTelegramMessage } from '@/lib/telegram';
 import { CATEGORY_LABELS_RU, type Category } from '@/lib/mock/data';
 
@@ -121,7 +122,7 @@ async function notifyMatchingWorkers({
     urgent ? '⚡ <b>Срочная заявка!</b>' : '📋 <b>Новая заявка</b>',
     `<b>${catLabel}</b> · ${city}`,
     '',
-    snippet,
+    escapeTelegramHtml(snippet),
     '',
     `👉 <a href="${jobUrl}">Откликнуться</a>`,
   ].join('\n');

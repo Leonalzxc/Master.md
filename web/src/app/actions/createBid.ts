@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { escapeTelegramHtml } from '@/lib/telegram-security';
 import { sendTelegramMessage } from '@/lib/telegram';
 
 import { bidInputSchema, bidErrors, type BidError, type BidInput, type BidResult, type SubmitBidRow } from '@/lib/bids';
@@ -72,7 +73,7 @@ export async function createBid(input: BidInput): Promise<BidResult> {
 
         await sendTelegramMessage({
           chatId: owner.telegram_chat_id,
-          text: `💬 <b>Новый отклик на вашу заявку</b>\n\n👷 Мастер: <b>${workerName}</b>${input.price ? `\n💰 Цена: ${input.price} MDL` : ''}\n\n<a href="${siteUrl}/${input.locale}/jobs/${input.jobId}">Посмотреть отклики →</a>`,
+          text: `💬 <b>Новый отклик на вашу заявку</b>\n\n👷 Мастер: <b>${escapeTelegramHtml(workerName)}</b>${input.price ? `\n💰 Цена: ${input.price} MDL` : ''}\n\n<a href="${siteUrl}/${input.locale}/jobs/${input.jobId}">Посмотреть отклики →</a>`,
         });
       }
     }

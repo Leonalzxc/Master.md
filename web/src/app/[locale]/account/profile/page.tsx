@@ -88,7 +88,6 @@ export default async function ProfilePage({ params }: Props) {
             profile={profile}
             workerProfile={workerProfile}
             telegramConnected={!!profile.telegram_chat_id}
-            userId={user.id}
           />
         </div>
       </main>

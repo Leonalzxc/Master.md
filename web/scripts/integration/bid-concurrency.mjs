@@ -149,3 +149,16 @@ test('free pilot: concurrent jobs cannot exceed the daily bid limit', async () =
   assert.equal((await pending).error?.message,'daily_limit');
   assert.deepEqual(await state(db),{credits:5,bids:10,notifications:10});
 });
+
+test('Telegram issuance racing consumption invalidates the old token without a lock inversion',async()=>{
+  const {readFileSync}=await import('node:fs'),{createHash}=await import('node:crypto');
+  await db.exec(readFileSync(new URL('../../supabase/migrations/202610040004_secure_telegram_links.sql',import.meta.url),'utf8'));
+  const hash=t=>createHash('sha256').update(t).digest('hex');
+  const a=await connect(),b=await connect(); await actor(a);await actor(b,null,'service_role');
+  await a.query('select issue_telegram_link($1)',[hash('a'.repeat(64))]);
+  await a.query('begin');await a.query('select issue_telegram_link($1)',[hash('b'.repeat(64))]);
+  const pending=outcome(b.query('select * from consume_telegram_update($1,100,1,false)',[hash('a'.repeat(64))]));
+  await waitForLock(b);await a.query('commit');const result=await pending;assert.ifError(result.error);
+  assert.equal(result.value.rows[0].result,'invalid');
+  assert.equal((await db.query('select telegram_chat_id from profiles where id=$1',[workerId])).rows[0].telegram_chat_id,null);
+});

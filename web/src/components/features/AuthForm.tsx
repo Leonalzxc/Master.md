@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { safeAuthNext } from '@/lib/auth-path';
 import { createClient } from '@/lib/supabase/client';
 import { CATEGORY_LABELS_RU, CATEGORY_LABELS_RO, CATEGORY_ICONS, CITIES, AREAS as CITY_AREAS, type Category } from '@/lib/mock/data';
 
@@ -80,7 +81,7 @@ export default function AuthForm({ locale, next }: { locale: string; next?: stri
       // Returning user — go to account
       setLoading(false);
       setScreen('success');
-      const safeNext = next?.startsWith('/') ? next : `/${locale}/account`;
+      const safeNext = safeAuthNext(next,locale);
       setTimeout(() => { router.push(safeNext); router.refresh(); }, 500);
     } else {
       // New user — start registration flow

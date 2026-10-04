@@ -160,6 +160,7 @@ async function actionHarness({ user = workerId, rpcError = null } = {}) {
   };
   const imports = {
     '@/lib/bids': domain,
+    '@/lib/telegram-security': compile('../src/lib/telegram-security.ts',require),
     '@/lib/supabase/server': { createClient: async () => session },
     '@/lib/supabase/admin': { createAdminClient: () => { throw new Error('No external services in tests'); } },
     '@/lib/telegram': { sendTelegramMessage: () => { throw new Error('No messages in tests'); } },

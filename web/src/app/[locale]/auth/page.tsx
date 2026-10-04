@@ -4,6 +4,7 @@ import Link from 'next/link';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import AuthForm from '@/components/features/AuthForm';
+import { safeAuthNext } from '@/lib/auth-path';
 import { createClient } from '@/lib/supabase/server';
 
 type Props = {
@@ -24,7 +25,7 @@ export default async function AuthPage({ params, searchParams }: Props) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   // Validate next to prevent open redirect (must be relative path)
-  const safeNext = next?.startsWith('/') ? next : `/${locale}/account`;
+  const safeNext = safeAuthNext(next,locale);
   if (user) redirect(safeNext);
 
   return (
@@ -49,7 +50,7 @@ export default async function AuthPage({ params, searchParams }: Props) {
               </p>
             </div>
 
-            <AuthForm locale={locale} next={next} />
+            <AuthForm locale={locale} next={safeNext} />
 
             <p className="text-xs text-center" style={{ color: 'var(--text-muted)', lineHeight: 1.6 }}>
               {locale === 'ru'

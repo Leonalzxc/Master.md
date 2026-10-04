@@ -5,8 +5,9 @@
  *  1. Create a bot via @BotFather → get TELEGRAM_BOT_TOKEN
  *  2. Set TELEGRAM_BOT_TOKEN in .env.local and Vercel env vars
  *  3. Set NEXT_PUBLIC_TELEGRAM_BOT_USERNAME (without @) for the connect button deep link
- *  4. Register webhook:
- *     https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://your-domain.com/api/telegram/webhook
+ *  4. Set TELEGRAM_WEBHOOK_SECRET in server environment.
+ *  5. Register setWebhook via POST with url and the same secret_token.
+ *     Keep the bot token out of browser URLs, logs and chat.
  */
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
@@ -32,6 +33,7 @@ export async function sendTelegramMessage({ chatId, text, parseMode = 'HTML', di
   try {
     const res = await fetch(`${TG_API}/sendMessage`, {
       method: 'POST',
+      signal: AbortSignal.timeout(8000),
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         chat_id: chatId,
@@ -43,22 +45,14 @@ export async function sendTelegramMessage({ chatId, text, parseMode = 'HTML', di
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      console.error('[Telegram] sendMessage failed:', err);
+      console.error('[Telegram] sendMessage failed:', {code:err.error_code});
       return false;
     }
 
     return true;
-  } catch (e) {
-    console.error('[Telegram] sendMessage error:', e);
+  } catch {
+    console.error('[Telegram] sendMessage unavailable');
     return false;
   }
 }
 
-/**
- * Build the deep link for "Connect Telegram" button.
- * When user taps it, the bot receives `/start {userId}` and we store their chat_id.
- */
-export function telegramConnectUrl(userId: string): string {
-  const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME ?? 'Master_MDbot';
-  return `https://t.me/${botUsername}?start=${userId}`;
-}
