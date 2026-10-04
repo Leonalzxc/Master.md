@@ -66,7 +66,7 @@ export default async function VerifyPage({ params }: Props) {
                 {t('Вы уже верифицированы!', 'Ești deja verificat!')}
               </h2>
               <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>
-                {t('Ваш профиль имеет значок ✓ Проверен. Клиенты видят вас как надёжного мастера.', 'Profilul dvs. a fost examinat de un moderator. Insigna nu garantează calitatea lucrărilor.')}
+                {t('Модератор просмотрел ваш профиль. Отметка не гарантирует квалификацию и качество работ.', 'Profilul dvs. a fost examinat de un moderator. Insigna nu garantează calitatea lucrărilor.')}
               </p>
               <Link href={`/${locale}/workers/${user.id}`} className="btn-primary" style={{ fontSize: 14 }}>
                 {t('Посмотреть профиль', 'Vezi profilul')}
@@ -87,8 +87,8 @@ export default async function VerifyPage({ params }: Props) {
                 </h2>
                 <p style={{ color: 'var(--text-muted)', fontSize: 14, maxWidth: 440, textAlign: 'center', lineHeight: 1.7 }}>
                   {t(
-                    'Мы проверяем ваш профиль. Обычно это занимает 1–2 рабочих дня. Как только верификация будет выполнена, на вашем профиле появится значок ✓ Проверен.',
-                    'Verificăm profilul dvs. De obicei durează 1-2 zile lucrătoare. Odată verificarea finalizată, profilul dvs. va afișa insigna ✓ Verificat.'
+                    'Модератор рассмотрит указанные данные профиля. Срок проверки в пилоте не установлен. После одобрения появится значок ✓ Проверен; паспорт для пилота не нужен.',
+                    'Un moderator va examina datele profilului. Termenul nu este stabilit în pilot. După aprobare apare insigna ✓ Verificat; pilotul nu necesită pașaport.'
                   )}
                 </p>
               </div>
@@ -174,8 +174,8 @@ export default async function VerifyPage({ params }: Props) {
                     style={{ background: 'var(--accent-dim)', color: 'var(--accent)', lineHeight: 1.7 }}
                   >
                     {t(
-                      'Нажимая кнопку ниже, вы подтверждаете, что все данные в профиле актуальны и достоверны. Наша команда проверит информацию в течение 1–2 рабочих дней.',
-                      'Apăsând butonul de mai jos, confirmați că toate datele din profil sunt actuale și corecte. Echipa noastră va verifica informațiile în termen de 1-2 zile lucrătoare.'
+                      'Отправьте профиль на ручной просмотр, если данные актуальны и достоверны. Срок проверки в пилоте не установлен; документы не требуются.',
+                      'Trimiteți profilul spre examinare manuală dacă datele sunt actuale și corecte. Termenul nu este stabilit în pilot; documentele nu sunt necesare.'
                     )}
                   </div>
                   <form action={submitVerification}>

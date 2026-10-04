@@ -125,7 +125,7 @@ export default async function WorkerDashboard({ params }: Props) {
                 </p>
                 <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
                   {verificationSubmitted
-                    ? (locale === 'ru' ? 'Обычно занимает 1–2 рабочих дня. После проверки появится значок ✓ Проверен.' : 'Durează de obicei 1-2 zile lucrătoare.')
+                    ? (locale === 'ru' ? 'Профиль ожидает ручного просмотра. Срок в пилоте не установлен; отметка не гарантирует квалификацию.' : 'Profilul așteaptă examinarea manuală. Termenul nu este stabilit în pilot; insigna nu garantează calificarea.')
                     : (locale === 'ru' ? 'Верифицированные мастера получают значок и больше доверия от заказчиков.' : 'Meșterii verificați primesc mai multă încredere.')}
                 </p>
               </div>

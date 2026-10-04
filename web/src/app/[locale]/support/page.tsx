@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
+import { supportFaqs, SUPPORT_TELEGRAM } from '@/lib/pilot-copy';
 
 type Props = { params: Promise<{ locale: string }> };
 
@@ -14,65 +15,9 @@ export default async function SupportPage({ params }: Props) {
   const { locale } = await params;
   const ru = locale === 'ru';
 
-  const faqs = ru ? [
-    {
-      q: 'Как зарегистрироваться как мастер?',
-      a: 'Создайте аккаунт, затем на странице аккаунта выберите роль «Мастер» и заполните профиль. После этого вы сможете откликаться на заявки.',
-    },
-    {
-      q: 'Не получаю SMS-код при входе',
-      a: 'Проверьте правильность номера. Попробуйте снова через 60 секунд. Если код не приходит — используйте вход через e-mail или напишите нам.',
-    },
-    {
-      q: 'Как подключить Telegram-уведомления?',
-      a: 'Перейдите в «Настройки профиля» → раздел «Уведомления» → нажмите «Подключить Telegram». Вы перейдёте к боту — нажмите Start.',
-    },
-    {
-      q: 'Как пройти верификацию?',
-      a: 'В дашборде мастера нажмите «Пройти верификацию» и загрузите документ, подтверждающий личность. Проверка занимает 1–2 рабочих дня.',
-    },
-    {
-      q: 'Заявка не публикуется',
-      a: 'Убедитесь, что заполнены все обязательные поля: категория, описание и город. Если проблема сохраняется — напишите в поддержку.',
-    },
-    {
-      q: 'Как удалить аккаунт?',
-      a: 'Напишите на privacy@master.md с просьбой об удалении. Данные удаляются в течение 7 рабочих дней.',
-    },
-  ] : [
-    {
-      q: 'Cum să mă înregistrez ca meșter?',
-      a: 'Creați un cont, apoi pe pagina contului alegeți rolul «Meșter» și completați profilul. Ulterior puteți depune oferte pe cereri.',
-    },
-    {
-      q: 'Nu primesc codul SMS la autentificare',
-      a: 'Verificați corectitudinea numărului. Încercați din nou după 60 de secunde. Dacă codul nu vine — folosiți autentificarea prin e-mail sau scrieți-ne.',
-    },
-    {
-      q: 'Cum să conectez notificările Telegram?',
-      a: 'Accesați «Setări profil» → secțiunea «Notificări» → apăsați «Conectați Telegram». Veți fi redirecționat la bot — apăsați Start.',
-    },
-    {
-      q: 'Cum trec prin verificare?',
-      a: 'În panoul meșterului apăsați «Treceți prin verificare» și încărcați un document de identitate. Verificarea durează 1-2 zile lucrătoare.',
-    },
-    {
-      q: 'Cererea nu se publică',
-      a: 'Asigurați-vă că sunt completate toate câmpurile obligatorii: categorie, descriere și oraș. Dacă problema persistă — scrieți la suport.',
-    },
-    {
-      q: 'Cum să șterg contul?',
-      a: 'Scrieți la privacy@master.md cu solicitarea de ștergere. Datele sunt șterse în 7 zile lucrătoare.',
-    },
-  ];
-
-  const channels = ru ? [
-    { icon: '📧', title: 'E-mail', value: 'support@master.md', href: 'mailto:support@master.md', desc: 'Ответ в течение 24 часов' },
-    { icon: '💬', title: 'Telegram', value: '@mastermd_support', href: 'https://t.me/mastermd_support', desc: 'Быстрее всего' },
-  ] : [
-    { icon: '📧', title: 'E-mail', value: 'support@master.md', href: 'mailto:support@master.md', desc: 'Răspuns în 24 de ore' },
-    { icon: '💬', title: 'Telegram', value: '@mastermd_support', href: 'https://t.me/mastermd_support', desc: 'Cel mai rapid' },
-  ];
+  const faqs = supportFaqs(locale);
+  const channels = [{ icon: '💬', title: 'Telegram', value: SUPPORT_TELEGRAM.label, href: SUPPORT_TELEGRAM.href,
+    desc: ru ? 'Вопросы, жалобы и запросы о данных' : 'Întrebări, reclamații și solicitări despre date' }];
 
   return (
     <>
@@ -85,7 +30,7 @@ export default async function SupportPage({ params }: Props) {
               {ru ? 'Поддержка' : 'Suport'}
             </h1>
             <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
-              {ru ? 'Мы помогаем с 9:00 до 20:00 по Кишинёву' : 'Vă ajutăm de la 9:00 la 20:00 ora Chișinăului'}
+              {ru ? 'Поддержка бесплатного пилота в Бельцах' : 'Suport pentru pilotul gratuit din Bălți'}
             </p>
           </div>
         </div>
@@ -145,7 +90,7 @@ export default async function SupportPage({ params }: Props) {
                 { href: `/${locale}/legal/terms`, label: ru ? 'Условия использования' : 'Termeni de utilizare' },
                 { href: `/${locale}/legal/privacy`, label: ru ? 'Конфиденциальность' : 'Confidențialitate' },
                 { href: `/${locale}/legal/moderation`, label: ru ? 'Правила модерации' : 'Moderare' },
-                { href: `/${locale}/pricing`, label: ru ? 'Цены на кредиты' : 'Prețuri credite' },
+                { href: `/${locale}/pricing`, label: ru ? 'Условия бесплатного пилота' : 'Condițiile pilotului gratuit' },
               ].map(({ href, label }) => (
                 <Link
                   key={href}

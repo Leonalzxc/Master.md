@@ -24,15 +24,15 @@ export default async function ForWorkersPage({ params }: Props) {
     { icon: '⚡', title: 'Быстрый старт', text: 'Создайте профиль за 5 минут. Сразу начинайте откликаться на подходящие заявки.' },
     { icon: '🌍', title: 'Пилот в Бельцах', text: 'Принимайте заказы в Бельцах. Расширение географии — после проверки пилота.' },
     { icon: '⭐', title: 'Рейтинг и доверие', text: 'Собирайте отзывы после каждого заказа. Высокий рейтинг приводит больше заказчиков.' },
-    { icon: '🛡️', title: 'Верификация', text: 'Пройдите верификацию и получите значок ✓ Проверен — это увеличивает конверсию откликов.' },
-    { icon: '📱', title: 'Telegram-уведомления', text: 'Подключите Telegram и получайте мгновенные уведомления о новых заявках, не пропуская ни одну.' },
+    { icon: '🛡️', title: 'Верификация', text: 'Запросите ручной просмотр профиля модератором. Отметка не гарантирует квалификацию и качество работы.' },
+    { icon: '📱', title: 'Telegram-уведомления', text: 'Подключите Telegram для уведомлений о подходящих заявках. Доставка может задержаться; проверяйте также каталог и уведомления на сайте.' },
   ] : [
     { icon: '📋', title: 'Flux de cereri', text: 'Primiți cereri de la clienți din orașul dvs. și din specialitatea dvs. Fără căutare la rece.' },
     { icon: '⚡', title: 'Start rapid', text: 'Creați un profil în 5 minute. Începeți imediat să depuneți oferte pe cereri potrivite.' },
     { icon: '🌍', title: 'Pilot în Bălți', text: 'Acceptați lucrări în Bălți. Extinderea va urma după evaluarea pilotului.' },
     { icon: '⭐', title: 'Rating și încredere', text: 'Colectați recenzii după fiecare comandă. Un rating ridicat aduce mai mulți clienți.' },
-    { icon: '🛡️', title: 'Verificare', text: 'Treceți prin verificare și obțineți insigna ✓ Verificat — aceasta crește conversia ofertelor.' },
-    { icon: '📱', title: 'Notificări Telegram', text: 'Conectați Telegram și primiți notificări instantanee despre cereri noi, fără să ratați niciuna.' },
+    { icon: '🛡️', title: 'Verificare', text: 'Solicitați examinarea manuală a profilului de către moderator. Insigna nu garantează calificarea sau calitatea lucrării.' },
+    { icon: '📱', title: 'Notificări Telegram', text: 'Conectați Telegram pentru notificări despre cereri potrivite. Livrarea poate întârzia; verificați și catalogul și notificările pe site.' },
   ];
 
   const steps = ru ? [
@@ -84,7 +84,7 @@ export default async function ForWorkersPage({ params }: Props) {
                 {ru ? 'Зарегистрироваться бесплатно' : 'Înregistrare gratuită'}
               </Link>
               <Link href={`/${locale}/pricing`} className="hero-btn-outline">
-                {ru ? 'Узнать цены →' : 'Aflați prețuri →'}
+                {ru ? 'Условия пилота →' : 'Condițiile pilotului →'}
               </Link>
             </div>
           </div>
