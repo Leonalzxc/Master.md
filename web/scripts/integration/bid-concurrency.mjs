@@ -162,3 +162,25 @@ test('Telegram issuance racing consumption invalidates the old token without a l
   assert.equal(result.value.rows[0].result,'invalid');
   assert.equal((await db.query('select telegram_chat_id from profiles where id=$1',[workerId])).rows[0].telegram_chat_id,null);
 });
+
+test('expiry skips a busy job and closes its pending bid on the next sweep',async()=>{
+  const {readFileSync}=await import('node:fs');
+  await db.exec(readFileSync(new URL('../../supabase/migrations/202610040005_legacy_job_notifications.sql',import.meta.url),'utf8'));
+  const a=await connect(),b=await connect();
+  await actor(a);await a.query(submitSql,args());
+  await db.query("update jobs set expires_at=now()-interval '1 hour' where id=$1",[jobId]);
+  await actor(a,null,'service_role');await actor(b,null,'service_role');
+  await a.query('begin');await a.query('select id from jobs where id=$1 for update',[jobId]);
+  assert.equal((await b.query('select expire_overdue_jobs() as n')).rows[0].n,0);
+  await a.query('commit');
+  assert.equal((await b.query('select expire_overdue_jobs() as n')).rows[0].n,1);
+  assert.equal((await db.query('select status from bids where job_id=$1',[jobId])).rows[0].status,'rejected');
+});
+test('expiry holding the job lock prevents a later bid from being inserted',async()=>{
+  await db.query("update jobs set expires_at=now()-interval '1 hour' where id=$1",[jobId]);
+  const a=await connect(),b=await connect();await actor(a,null,'service_role');await actor(b);
+  await a.query('begin');await a.query('select expire_overdue_jobs()');
+  const pending=outcome(b.query(submitSql,args()));await waitForLock(b);await a.query('commit');
+  assert.equal((await pending).error?.message,'job_unavailable');
+  assert.deepEqual(await state(db),{credits:5,bids:0,notifications:0});
+});

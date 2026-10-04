@@ -28,7 +28,7 @@ export async function setupBidDatabase(db) {
     grant insert (job_id,worker_id,comment) on bids to authenticated;
     grant update(bid_credits), insert(bid_credits) on profiles_worker to authenticated;`);
   for (const name of ['006_notifications.sql', '008_fix_bids_rls.sql', '010_fix_jobs_rls.sql',
-    '011_bid_credits_and_admin.sql', '013_fix_profiles_rls.sql', '202609230001_profile_contact_privacy.sql']) {
+    '011_bid_credits_and_admin.sql', '012_auto_expire_and_notify.sql', '013_fix_profiles_rls.sql', '202609230001_profile_contact_privacy.sql']) {
     await db.exec(migration(name));
   }
   await db.exec(atomicSql);

@@ -160,7 +160,7 @@ test('createJob action inserts against the real jobs schema without a title colu
   const ts = require('typescript');
   const source = readFileSync(resolve(root, 'src/app/actions/createJob.ts'), 'utf8');
   const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText;
-  let inserted;
+  let inserted; const background=[];
   const supabase = {
     auth: { getUser: async () => ({ data: { user: { id: client } } }) },
     from: (table) => {
@@ -179,6 +179,7 @@ test('createJob action inserts against the real jobs schema without a title colu
     require: (name) => {
       if (name === 'next/navigation') return { redirect: (path) => { throw new Error('REDIRECT:' + path); } };
       if (name === 'next/cache') return { revalidatePath() {} };
+      if (name === 'next/server') return { after: fn => background.push(fn) };
       if (name.endsWith('/supabase/server')) return { createClient: async () => supabase };
       if (name.endsWith('/supabase/admin')) return { createAdminClient: () => { throw new Error('Notifications disabled in test'); } };
       if (name === '@/lib/telegram-security') return { escapeTelegramHtml: value => value };
@@ -203,4 +204,6 @@ test('createJob action inserts against the real jobs schema without a title colu
   assert.equal(result.ok,true);
   assert.equal(result.jobId,inserted);
   assert.ok(inserted);
+  assert.equal(background.length,1);
+  await background[0](); // Notification failure must not undo the committed request.
 });

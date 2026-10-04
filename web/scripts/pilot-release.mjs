@@ -9,10 +9,11 @@ export const files=[
  '202610040002_free_balti_pilot.sql',
  '202610040003_worker_location_privacy.sql',
  '202610040004_secure_telegram_links.sql',
+ '202610040005_legacy_job_notifications.sql',
 ];
 export function pilotRelease(){
  const entries=files.map(name=>{const sql=readFileSync(new URL(`../supabase/migrations/${name}`,import.meta.url),'utf8');return {name,sha256:createHash('sha256').update(sql).digest('hex'),sql};});
- const header=`-- Generated pilot release. Review schema and backup first. Deploy with matching frontend.\n-- All six changes commit together; failure rolls back grants, functions and data.\n-- Existing rows/balances are retained; no initial seed is included.\nBEGIN;\nSET LOCAL lock_timeout = '10s';\nSET LOCAL statement_timeout = '60s';\n`;
+ const header=`-- Generated pilot release. Review schema and backup first. Deploy with matching frontend.\n-- All ${files.length} changes commit together; failure rolls back grants, functions and data.\n-- Existing rows/balances are retained; no initial seed is included.\nBEGIN;\nSET LOCAL lock_timeout = '10s';\nSET LOCAL statement_timeout = '60s';\n`;
  const guard=`DO $preflight$ BEGIN
  IF to_regprocedure('public.spend_bid_credit(uuid)') IS NULL
     OR to_regprocedure('public.is_admin(uuid)') IS NULL

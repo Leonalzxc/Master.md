@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { after } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { escapeTelegramHtml } from '@/lib/telegram-security';
@@ -57,15 +58,15 @@ export async function createJob(input: JobInput): Promise<JobResult> {
   revalidatePath(`/${formData.locale}/jobs`);
   revalidatePath(`/${formData.locale}/account/client`);
 
-  // Fire-and-forget: notify matching workers via Telegram
-  notifyMatchingWorkers({
+  // Keep the response quick while letting the host finish this work after it.
+  after(async () => { try { await notifyMatchingWorkers({
     jobId: data.id,
     category: formData.category,
     city: formData.city,
     description: formData.description,
     urgent: formData.urgent,
     locale: formData.locale,
-  }).catch((e) => console.error('[createJob] notification error:', e));
+  }); } catch { console.error('[createJob] background notifications failed'); } });
 
   return { ok: true, jobId: data.id };
 }
