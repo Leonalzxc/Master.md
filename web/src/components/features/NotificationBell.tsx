@@ -26,6 +26,8 @@ export default function NotificationBell({ userId, initialNotifications }: Props
   const [isPending, startTransition] = useTransition();
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  const [now] = useState(() => Date.now());
+
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   // ── Real-time subscription ────────────────────────────────
@@ -105,7 +107,7 @@ export default function NotificationBell({ userId, initialNotifications }: Props
 
   // ── Time formatter ────────────────────────────────────────
   function timeAgo(iso: string): string {
-    const diffMs = Date.now() - new Date(iso).getTime();
+    const diffMs = now - new Date(iso).getTime();
     const diffMin = Math.floor(diffMs / 60_000);
     if (diffMin < 1) return t('justNow');
     if (diffMin < 60) return t('minutesAgo', { count: diffMin });

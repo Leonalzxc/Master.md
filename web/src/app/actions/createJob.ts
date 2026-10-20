@@ -1,8 +1,12 @@
 'use server';
 
-import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
+import { CITIES, CATEGORY_LABELS_RU } from '@/lib/mock/data';
+
+type PublishResult = { ok: true; jobId: string } | {
+  ok: false; error: 'not_authenticated' | 'invalid_input' | 'temporarily_unavailable';
+};
 
 export async function createJob(formData: {
   category: string;
@@ -16,15 +20,26 @@ export async function createJob(formData: {
   needsQuote: boolean;
   photos: string[];
   locale: string;
-}) {
+}): Promise<PublishResult> {
+  if (!formData || !['ru', 'ro'].includes(formData.locale) ||
+      typeof formData.description !== 'string' || formData.description.trim().length < 20 ||
+      formData.description.length > 5000 || typeof formData.category !== 'string' || !Object.hasOwn(CATEGORY_LABELS_RU, formData.category) ||
+      typeof formData.city !== 'string' || !CITIES.includes(formData.city) ||
+      typeof formData.area !== 'string' || formData.area.length > 100 ||
+      !Number.isFinite(formData.lat) || !Number.isFinite(formData.lng) ||
+      typeof formData.urgent !== 'boolean' || typeof formData.needsQuote !== 'boolean' ||
+      !Array.isArray(formData.photos) || formData.photos.length > 5 || formData.photos.some(photo => typeof photo !== 'string') ||
+      typeof formData.budget !== 'string' ||
+      (formData.budget.trim() !== '' && (!/^\d+(?:\.\d{1,2})?$/.test(formData.budget.trim()) || Number(formData.budget) > 1_000_000_000))) {
+    return { ok: false, error: 'invalid_input' };
+  }
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user)
-    redirect(`/${formData.locale}/auth?next=/${formData.locale}/request/new`);
+  if (!user) return { ok: false, error: 'not_authenticated' };
 
-  const budgetNum = formData.budget ? parseFloat(formData.budget) : null;
+  const budgetNum = formData.budget.trim() ? Number(formData.budget) : null;
 
   // Jobs expire in 30 days by default; urgent jobs expire in 7 days
   const expiryDays = formData.urgent ? 7 : 30;
@@ -35,7 +50,6 @@ export async function createJob(formData: {
     .from('jobs')
     .insert({
       client_id: user.id,
-      title: formData.description.trim().slice(0, 80),
       category: formData.category,
       description: formData.description.trim(),
       city: formData.city,
@@ -52,9 +66,12 @@ export async function createJob(formData: {
     .select('id')
     .single();
 
-  if (error) throw new Error(error.message);
+  if (error || !data?.id) {
+    console.error('[createJob]', { code: error?.code ?? 'NO_ROW' });
+    return { ok: false, error: 'temporarily_unavailable' };
+  }
 
   revalidatePath(`/${formData.locale}/jobs`);
   revalidatePath(`/${formData.locale}/account/client`);
-  redirect(`/${formData.locale}/jobs/${data.id}`);
+  return { ok: true, jobId: data.id };
 }

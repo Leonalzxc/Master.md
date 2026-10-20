@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-/* eslint-disable @typescript-eslint/no-require-imports */
 /**
  * Аудит границ Supabase client/server:
  *  - server-компоненты (без "use client") НЕ должны импортировать @/lib/supabase/client

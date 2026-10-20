@@ -28,7 +28,7 @@ export default async function AdminPage({ params }: Props) {
   const [
     { data: rawUsers, count: userCount },
     { data: rawJobs, count: jobCount },
-    { data: rawReviews, count: reviewCount },
+    { count: reviewCount },
     { data: rawWorkerProfiles },
   ] = await Promise.all([
     supabase.from('profiles').select('*', { count: 'exact' }).order('created_at', { ascending: false }).limit(100),
@@ -95,7 +95,7 @@ export default async function AdminPage({ params }: Props) {
               { label: 'Всего заявок', value: jobCount ?? 0, icon: '📋' },
               { label: 'Активных заявок', value: activeJobs, icon: '✅' },
               { label: 'Отзывов', value: reviewCount ?? 0, icon: '⭐' },
-              { label: 'Просрочено', value: jobs.filter((j) => j.status === 'active' && !!(j as any).expires_at && new Date((j as any).expires_at) < new Date()).length, icon: '⏰', danger: true },
+              { label: 'Просрочено', value: jobs.filter((j) => j.status === 'active' && !!(j as Job & { expires_at?: string }).expires_at && new Date((j as Job & { expires_at?: string }).expires_at!) < new Date()).length, icon: '⏰', danger: true },
             ].map(({ label, value, icon, danger }) => (
               <div key={label} className="card p-5 text-center">
                 <div style={{ fontSize: 28, marginBottom: 4 }}>{icon}</div>

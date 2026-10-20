@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-/* eslint-disable @typescript-eslint/no-require-imports */
 /**
  * Проверка i18n:
  *  1. Симметрия ключей между messages/ru.json и messages/ro.json

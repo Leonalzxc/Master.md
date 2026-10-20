@@ -68,7 +68,7 @@ export async function expireJobs(formData: FormData) {
   await requireAdmin(supabase);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase as any).rpc('expire_overdue_jobs');
+  const { error } = await (supabase as any).rpc('expire_overdue_jobs');
   if (error) throw new Error(error.message);
 
   revalidatePath(`/${locale}/admin`);
