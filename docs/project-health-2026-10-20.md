@@ -2,7 +2,7 @@
 
 ## Подтверждённая причина ошибки
 
-Production alias `master-md.vercel.app` указывает на
+В начале проверки production alias `master-md.vercel.app` указывал на
 `dpl_CSeFo1Pg7SE3w63Fsc9L7L2N2q1p`, git SHA
 `d9402674546cc0d6196e125feb6f5574e70d390e`, ветка main. PR #36 не объединён.
 Vercel runtime-log за сутки содержит 500 на `/ru/request/new`, digest
@@ -59,3 +59,24 @@ Quality script больше не форматирует, не коммитит �
 
 **Полный публичный пилот остаётся No-Go.** Точечное исправление существующей
 ошибки не является подтверждением безопасности всего действующего deployment.
+
+## Опубликованное точечное исправление
+
+PR #37 объединён после успешных quality и Vercel checks.
+Main / production SHA: `8ae97b987f9e2c44494b77c5685aebbe32d1f70f`.
+Production alias переключён на `dpl_2utkorPzWyQ11aHaxBiBoAv7hq8a` (Ready).
+В нём отсутствует ошибочный INSERT jobs.title; новых SQL нет.
+Локальный браузер проверил три шага и реальный гостевой Server Action:
+вместо технической ошибки показано предложение входа в новой вкладке, черновик
+сохранён; browser error log пустой. Авторизованная публикация с реальными
+уведомлениями не проверялась и не выдаётся за успешную.
+
+Release-ветка согласуется с новым main с сохранением атомарного publish_pilot_job,
+без возврата к legacy INSERT. Устаревшие NotificationBell и hotfix-тест старого
+контракта не возвращаются; их заменяет новый компонент и тесты атомарных RPC.
+Next.js и ESLint также обновлены до 16.4.2; CI теперь проверяет runtime audit.
+После разрешения конфликтов повторно прошли lint, i18n, client boundaries,
+все 80 tests, build и typecheck. SQL-источники не менялись; 14 PostgreSQL tests
+прошли ранее в этой же проверке. Runtime audit снова сообщает 0 advisories.
+Production HTTP после hotfix: 14/25 PASS; прежние 11 отсутствующих публичных
+маршрутов остаются частью большого, пока не выложенного release.

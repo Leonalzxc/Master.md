@@ -36,6 +36,7 @@ jobs:
           cache-dependency-path: web/package-lock.json
       - run: npm ci
       - run: npm run quality
+      - run: npm audit --omit=dev
       - name: Ensure checks did not change tracked files
         run: git diff --exit-code
   bid-concurrency:
