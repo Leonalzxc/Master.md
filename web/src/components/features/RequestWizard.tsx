@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { CATEGORY_LABELS_RU, CATEGORY_ICONS, CITIES, type Category } from '@/lib/mock/data';
 import { createJob } from '@/app/actions/createJob';
 import LocationPicker from './LocationPicker';
@@ -37,11 +38,14 @@ const INITIAL: FormData = {
 interface Props { locale: string }
 
 export default function RequestWizard({ locale }: Props) {
+  const router = useRouter();
+  const submitting = useRef(false);
   const [step, setStep] = useState(0);
   const [form, setForm] = useState<FormData>(INITIAL);
   const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({});
   const [loading, setLoading] = useState(false);
   const [serverError, setServerError] = useState('');
+  const [authRequired, setAuthRequired] = useState(false);
 
   const set = <K extends keyof FormData>(key: K, value: FormData[K]) => {
     setForm((f) => ({ ...f, [key]: value }));
@@ -69,11 +73,14 @@ export default function RequestWizard({ locale }: Props) {
   }
 
   async function publish() {
-    if (!validateStep()) return;
+    if (submitting.current || !validateStep()) return;
+    submitting.current = true;
+    let published = false;
     setLoading(true);
     setServerError('');
+    setAuthRequired(false);
     try {
-      await createJob({
+      const result = await createJob({
         category: form.category as string,
         description: form.description,
         city: form.city || CITIES[0],
@@ -86,9 +93,23 @@ export default function RequestWizard({ locale }: Props) {
         photos: form.photos,
         locale,
       });
-    } catch (err) {
-      setServerError(err instanceof Error ? err.message : 'Ошибка. Попробуйте снова.');
-      setLoading(false);
+      if (!result.ok) {
+        setAuthRequired(result.error === 'not_authenticated');
+        const messages = {
+          not_authenticated: ['Войдите в новой вкладке и вернитесь к этой форме. Данные останутся здесь.', 'Autentificați-vă într-o filă nouă și reveniți la formular. Datele rămân aici.'],
+          invalid_input: ['Проверьте категорию, описание, город и бюджет.', 'Verificați categoria, descrierea, orașul și bugetul.'],
+          temporarily_unavailable: ['Не удалось опубликовать заявку. Данные остались в форме. Повторите позже.', 'Cererea nu a putut fi publicată. Datele rămân în formular. Reîncercați mai târziu.'],
+        };
+        setServerError(messages[result.error][locale === 'ro' ? 1 : 0]);
+        return;
+      }
+      router.push(`/${locale}/jobs/${result.jobId}`);
+      router.refresh();
+      published = true;
+    } catch {
+      setServerError(locale === 'ru' ? 'Не удалось получить ответ сервера. Проверьте «Мои заявки» перед повторной отправкой.' : 'Nu am primit răspunsul serverului. Verificați «Cererile mele» înainte de retrimitere.');
+    } finally {
+      if (!published) { submitting.current = false; setLoading(false); }
     }
   }
 
@@ -98,15 +119,16 @@ export default function RequestWizard({ locale }: Props) {
     <div style={{ maxWidth: 560, margin: '0 auto' }}>
       <ProgressBar step={step} total={STEPS.length} locale={locale} />
 
-      <div className="card p-6 mt-4">
+      <fieldset disabled={loading} className="card p-6 mt-4" style={{ minWidth: 0 }}>
         {step === 0 && <Step1Categories form={form} set={set} errors={errors} locale={locale} />}
         {step === 1 && <Step2Description form={form} set={set} errors={errors} locale={locale} />}
         {step === 2 && <Step3Location form={form} set={set} errors={errors} locale={locale} />}
-      </div>
+      </fieldset>
 
       {serverError && (
-        <p className="text-sm mt-3 text-center" style={{ color: 'var(--danger)' }}>{serverError}</p>
+        <p role="alert" className="text-sm mt-3 text-center" style={{ color: 'var(--danger)' }}>{serverError}</p>
       )}
+      {authRequired && <a href={`/${locale}/auth?next=${encodeURIComponent(`/${locale}/request/new`)}`} target="_blank" rel="noopener noreferrer" className="btn-secondary mt-3">{locale === 'ru' ? 'Войти в новой вкладке' : 'Autentificare într-o filă nouă'}</a>}
 
       <div
         className="flex justify-between gap-3 mt-4"
@@ -114,7 +136,7 @@ export default function RequestWizard({ locale }: Props) {
       >
         <button
           onClick={prevStep}
-          disabled={step === 0}
+          disabled={step === 0 || loading}
           className="btn-secondary"
           style={{ opacity: step === 0 ? 0 : 1, pointerEvents: step === 0 ? 'none' : 'auto' }}
         >
