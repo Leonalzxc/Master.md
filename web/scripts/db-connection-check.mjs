@@ -8,7 +8,10 @@ if (!PGHOST || !PGDATABASE || !PGUSER || !PGPASSWORD || PGPASSWORD==='[YOUR-PASS
   process.exit(1);
 }
 const ssl={rejectUnauthorized:true};
-if (PGSSLROOTCERT) ssl.ca=readFileSync(PGSSLROOTCERT,'utf8');
+if (PGSSLROOTCERT) {
+  try { ssl.ca=readFileSync(PGSSLROOTCERT,'utf8'); }
+  catch { console.error('DB_CA_UNAVAILABLE: restore the official Supabase CA and correct PGSSLROOTCERT in the local env file. TLS verification remains enabled.'); process.exit(1); }
+}
 const client=new Client({host:PGHOST,port:Number(PGPORT??5432),database:PGDATABASE,user:PGUSER,password:PGPASSWORD,
   ssl,connectionTimeoutMillis:10000,statement_timeout:10000});
 try {

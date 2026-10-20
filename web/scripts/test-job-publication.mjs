@@ -92,7 +92,7 @@ test('actual action uses the actor-bound RPC; retry/conflict never sends duplica
   if(dep==='next/server')return {after:fn=>background.push(fn)};
   if(dep==='@/lib/jobs')return jobs;
   if(dep==='@/lib/supabase/server')return {createClient:async()=>({auth:{getUser:async()=>({data:{user:{id:clientId}}})},rpc:async(name,args)=>{
-   assert.equal(name,'publish_pilot_job');assert.equal(args.p_input.client_id,undefined);calls.push(args);
+   assert.equal(name,'publish_pilot_job');assert.equal(args.p_input.client_id,undefined);assert.equal(args.p_input.title,undefined);calls.push(args);
    const result=await db.query('select * from publish_pilot_job($1,$2)',[args.p_request_id,JSON.stringify(args.p_input)]);return {data:result.rows,error:null};
   }})};
   if(dep==='@/lib/supabase/admin')return {createAdminClient:()=>{throw Error('External delivery forbidden in test');}};
