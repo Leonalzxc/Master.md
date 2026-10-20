@@ -3,10 +3,11 @@
 import Link from 'next/link';
 import { useTranslations, useLocale } from 'next-intl';
 import { usePathname, useRouter } from 'next/navigation';
-import { useState, useEffect, useRef } from 'react';
+import { Suspense, useState, useEffect, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import type { User } from '@supabase/supabase-js';
 import NotificationBell from './NotificationBell';
+import LanguageSwitch, { LanguageLink } from './LanguageSwitch';
 
 interface ProfileMini { name: string | null; role: string | null }
 
@@ -31,33 +32,54 @@ export default function Header() {
 
   useEffect(() => {
     const supabase = createClient();
+    let alive = true;
+    let generation = 0;
 
-    async function loadUser(u: User | null) {
+    function loadUser(u: User | null) {
+      if (!alive) return;
+      const request = ++generation;
       setUser(u);
-      if (!u) { setProfile(null); return; }
-      const { data } = await supabase.from('profiles').select('name, role').eq('id', u.id).single();
-      setProfile((data as ProfileMini | null) ?? null);
+      setProfile(null);
+      if (!u) return;
+      // Keep Supabase queries outside its synchronous auth callback/lock.
+      setTimeout(async () => {
+        if (!alive || request !== generation) return;
+        try {
+          const { data } = await supabase.from('profiles').select('name, role').eq('id', u.id).single();
+          if (alive && request === generation) setProfile((data as ProfileMini | null) ?? null);
+        } catch {
+          // The account remains usable even when its display name cannot be loaded.
+        }
+      }, 0);
     }
 
-    supabase.auth.getUser().then(({ data }) => loadUser(data.user));
+    supabase.auth.getUser().then(({ data }) => {
+      if (alive && generation === 0) loadUser(data.user);
+    }).catch(() => {});
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
       loadUser(session?.user ?? null);
     });
-    return () => subscription.unsubscribe();
-  }, []);
+    return () => { alive = false; subscription.unsubscribe(); };
+  }, [pathname]);
 
   // Close dropdown on outside click
   useEffect(() => {
     function handler(e: MouseEvent) {
       if (dropRef.current && !dropRef.current.contains(e.target as Node)) setDropOpen(false);
     }
+    function keyboard(e: KeyboardEvent) {
+      if (e.key === 'Escape') { setDropOpen(false); setMenuOpen(false); }
+    }
     document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    document.addEventListener('keydown', keyboard);
+    return () => {
+      document.removeEventListener('mousedown', handler);
+      document.removeEventListener('keydown', keyboard);
+    };
   }, []);
 
   const otherLocale = locale === 'ru' ? 'ro' : 'ru';
-  // Use regex anchored to start to avoid replacing locale inside dynamic segments (e.g. /ru/workers/ru-uuid)
-  const switchLangPath = pathname.replace(new RegExp(`^\\/${locale}`), `/${otherLocale}`);
+  const switchLangPath = pathname.replace(/^\/(ru|ro)(?=\/|$)/, `/${otherLocale}`);
 
   const isWorker = profile?.role === 'worker';
   const dashboardHref = isWorker ? `/${locale}/account/worker` : `/${locale}/account/client`;
@@ -85,12 +107,16 @@ export default function Header() {
           flexShrink: 0, border: dropOpen ? '2px solid var(--accent)' : '2px solid transparent',
         }}
         title={profile?.name ?? user.phone ?? ''}
+        aria-label={locale === 'ru' ? 'Меню аккаунта' : 'Meniul contului'}
+        aria-expanded={dropOpen}
+        aria-controls={dropOpen ? 'account-dropdown' : undefined}
       >
         {initials(profile?.name ?? null, user.phone ?? '??')}
       </button>
 
       {dropOpen && (
         <div
+          id="account-dropdown"
           style={{
             position: 'absolute', right: 0, top: 'calc(100% + 8px)',
             background: 'var(--bg-elevated)', border: '1px solid var(--glass-border)',
@@ -166,11 +192,9 @@ export default function Header() {
         {/* Right */}
         <div className="flex items-center gap-2">
           {/* Lang */}
-          <Link
-            href={switchLangPath}
-            className="text-xs font-semibold px-2 py-1 rounded-md transition-colors"
-            style={{ color: 'var(--text-muted)', border: '1px solid var(--glass-border)' }}
-          >{otherLocale.toUpperCase()}</Link>
+          <Suspense fallback={<LanguageLink href={switchLangPath} locale={otherLocale} />}>
+            <LanguageSwitch pathname={pathname} locale={otherLocale} />
+          </Suspense>
 
           {/* Notifications (logged-in only) */}
           {user && <NotificationBell />}
@@ -209,7 +233,9 @@ export default function Header() {
           <button
             className="md:hidden p-2 ml-1"
             onClick={() => setMenuOpen(!menuOpen)}
-            aria-label="Menu"
+            aria-label={locale === 'ru' ? 'Меню навигации' : 'Meniul de navigare'}
+            aria-expanded={menuOpen}
+            aria-controls={menuOpen ? 'mobile-navigation' : undefined}
           >
             {[0,1,2].map((i) => (
               <span
@@ -234,6 +260,7 @@ export default function Header() {
       {/* Mobile menu */}
       {menuOpen && (
         <div
+          id="mobile-navigation"
           className="md:hidden border-t py-3"
           style={{ background: 'var(--bg-elevated)', borderColor: 'var(--glass-border)' }}
         >

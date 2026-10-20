@@ -20,7 +20,7 @@ export default async function OnboardingPage({ params }: Props) {
   if (!user) redirect(`/${locale}/auth`);
 
   // Already completed onboarding → go to account
-  const { data: rawProfile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+  const { data: rawProfile } = await supabase.from('profiles').select('id,name,role').eq('id', user.id).single();
   const profile = rawProfile as Profile | null;
   if (profile?.name) redirect(`/${locale}/account`);
 
@@ -31,7 +31,7 @@ export default async function OnboardingPage({ params }: Props) {
         className="flex-1 flex items-start justify-center"
         style={{ background: 'var(--bg-deep)', padding: '40px 16px 64px' }}
       >
-        <OnboardingWizard locale={locale} userId={user.id} />
+        <OnboardingWizard locale={locale} />
       </main>
     </>
   );

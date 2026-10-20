@@ -1,5 +1,8 @@
 import Link from 'next/link';
 import { useTranslations, useLocale } from 'next-intl';
+import { CITIES } from '@/lib/mock/data';
+
+const FOOTER_CITIES = CITIES.slice(0, 6);
 
 export default function Footer() {
   const t = useTranslations('footer');
@@ -41,14 +44,16 @@ export default function Footer() {
           <div>
             <h4 className="text-white font-semibold text-sm mb-3">{t('cities')}</h4>
             <ul className="space-y-2 text-sm">
-              <li>
-                <Link
-                  href={`/${locale}/workers`}
-                  className="hover:text-white transition-colors"
-                >
-                  {t('balti')}
-                </Link>
-              </li>
+              {FOOTER_CITIES.map((city) => (
+                <li key={city}>
+                  <Link
+                    href={`/${locale}/workers?city=${encodeURIComponent(city)}`}
+                    className="hover:text-white transition-colors"
+                  >
+                    {city}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
 

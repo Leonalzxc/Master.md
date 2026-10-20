@@ -20,7 +20,7 @@ SET search_path = public
 AS $$
   SELECT EXISTS (
     SELECT 1 FROM public.profiles
-    WHERE id = p_uid AND role = 'admin'
+    WHERE id = p_uid AND role = 'admin' AND blocked_at IS NULL
   );
 $$;
 

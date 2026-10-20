@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import Badge from '@/components/ui/Badge';
 import RatingStars from '@/components/ui/RatingStars';
-import { type Worker, CATEGORY_LABELS_RU, CATEGORY_ICONS } from '@/lib/mock/data';
+import { type Worker, CATEGORY_LABELS_RU, CATEGORY_LABELS_RO, CATEGORY_ICONS } from '@/lib/mock/data';
 
 interface WorkerCardProps {
   worker: Worker;
@@ -58,7 +58,7 @@ export default function WorkerCard({ worker, locale }: WorkerCardProps) {
       <div className="flex flex-wrap gap-1.5">
         {worker.categories.map((cat) => (
           <Badge key={cat} variant="category">
-            {CATEGORY_ICONS[cat]} {CATEGORY_LABELS_RU[cat]}
+            {CATEGORY_ICONS[cat]} {(locale === 'ro' ? CATEGORY_LABELS_RO : CATEGORY_LABELS_RU)[cat]}
           </Badge>
         ))}
       </div>

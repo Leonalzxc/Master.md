@@ -1,3 +1,4 @@
+import { PUBLIC_WORKER_COLUMNS } from '@/lib/supabase/marketplace';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import Header from '@/components/layout/Header';
@@ -6,31 +7,36 @@ import EmptyState from '@/components/ui/EmptyState';
 import Badge from '@/components/ui/Badge';
 import RatingStars from '@/components/ui/RatingStars';
 import { createClient } from '@/lib/supabase/server';
-import { CITIES, CATEGORY_LABELS_RU, CATEGORY_ICONS, type Category } from '@/lib/mock/data';
-import type { Profile, ProfileWorker } from '@/lib/supabase/types';
+import { PUBLIC_PROFILE_COLUMNS, type PublicProfile } from '@/lib/supabase/profiles';
+import { CITIES, CATEGORY_LABELS_RU, CATEGORY_LABELS_RO, CATEGORY_ICONS, type Category } from '@/lib/mock/data';
+import type { ProfileWorker } from '@/lib/supabase/types';
 
-type Props = { params: Promise<{ locale: string }>; searchParams: Promise<{ city?: string; category?: string }> };
+type Props = { params: Promise<{ locale: string }>; searchParams: Promise<{ city?: string; category?: string; q?: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
   return { title: locale === 'ru' ? 'Мастера' : 'Meșteri' };
 }
 
-type WorkerRow = Profile & { profiles_worker: ProfileWorker | null };
+type WorkerRow = PublicProfile & { profiles_worker: ProfileWorker | null };
 
 export default async function WorkersPage({ params, searchParams }: Props) {
   const { locale } = await params;
-  const { city, category } = await searchParams;
+  const { category, q } = await searchParams;
+  const city = CITIES[0];
 
   const supabase = await createClient();
 
-  let query = supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let query = (supabase as any)
     .from('profiles')
-    .select('*, profiles_worker(*)')
+    .select(`${PUBLIC_PROFILE_COLUMNS},profiles_worker(${PUBLIC_WORKER_COLUMNS})`)
     .eq('role', 'worker')
     .order('name');
   // Apply city filter at DB level for efficiency
-  if (city) query = (query as typeof query).eq('city', city);
+  if (city) query = query.eq('city', city);
+  // Name search via ilike
+  if (q) query = query.ilike('name', `%${q}%`);
 
   const { data: rawWorkers, error } = await query;
 
@@ -50,18 +56,41 @@ export default async function WorkersPage({ params, searchParams }: Props) {
       <Header />
       <main className="flex-1" style={{ background: 'var(--bg-deep)', paddingBottom: 64 }}>
         <div style={{ background: 'var(--bg-elevated)', borderBottom: '1px solid var(--glass-border)', padding: '24px 0' }}>
-          <div className="container flex items-center justify-between gap-4 flex-wrap">
-            <div>
-              <h1 className="font-bold text-2xl" style={{ fontFamily: 'var(--font-display)', color: 'var(--text)' }}>
-                {locale === 'ru' ? 'Мастера' : 'Meșteri'}
-              </h1>
-              <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
-                {workers.length} {locale === 'ru' ? 'мастеров в Молдове' : 'meșteri în Moldova'}
-              </p>
+          <div className="container flex flex-col gap-4">
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <div>
+                <h1 className="font-bold text-2xl" style={{ fontFamily: 'var(--font-display)', color: 'var(--text)' }}>
+                  {locale === 'ru' ? 'Мастера' : 'Meșteri'}
+                </h1>
+                <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
+                  {workers.length} {locale === 'ru' ? 'мастеров в Бельцах' : 'meșteri în Bălți'}
+                </p>
+              </div>
+              <Link href={`/${locale}/request/new`} className="btn-primary" style={{ fontSize: 14 }}>
+                {locale === 'ru' ? '+ Создать заявку' : '+ Creează cerere'}
+              </Link>
             </div>
-            <Link href={`/${locale}/request/new`} className="btn-primary" style={{ fontSize: 14 }}>
-              {locale === 'ru' ? '+ Создать заявку' : '+ Creează cerere'}
-            </Link>
+            {/* Name search */}
+            <form method="GET" action={`/${locale}/workers`} className="flex gap-2" style={{ maxWidth: 480 }}>
+              {city && <input type="hidden" name="city" value={city} />}
+              {category && <input type="hidden" name="category" value={category} />}
+              <input
+                type="search"
+                name="q"
+                defaultValue={q}
+                placeholder={locale === 'ru' ? '🔍 Поиск по имени...' : '🔍 Caută după nume...'}
+                className="field-input flex-1"
+                style={{ height: 40, fontSize: 14 }}
+              />
+              <button type="submit" className="btn-secondary" style={{ height: 40, padding: '0 16px', fontSize: 14, whiteSpace: 'nowrap' }}>
+                {locale === 'ru' ? 'Найти' : 'Caută'}
+              </button>
+              {q && (
+                <Link href={`/${locale}/workers${city ? `?city=${encodeURIComponent(city)}` : ''}${category ? `${city ? '&' : '?'}category=${category}` : ''}`} className="btn-secondary" style={{ height: 40, padding: '0 12px', fontSize: 14 }}>
+                  ✕
+                </Link>
+              )}
+            </form>
           </div>
         </div>
 
@@ -80,18 +109,18 @@ export default async function WorkersPage({ params, searchParams }: Props) {
                   style={{ listStyle: 'none' }}
                 >
                   <span className="font-semibold text-sm" style={{ color: 'var(--text)' }}>
-                    🔍 {locale === 'ru' ? 'Фильтры' : 'Filtre'}
+                    🗂 {locale === 'ru' ? 'Фильтры' : 'Filtre'}
                     {(city || category) ? ' ●' : ''}
                   </span>
                   <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>▼</span>
                 </summary>
                 <div className="mt-2">
-                  <FilterPanel locale={locale} selectedCity={city} selectedCategory={category as Category | undefined} />
+                  <FilterPanel locale={locale} selectedCity={city} selectedCategory={category as Category | undefined} q={q} />
                 </div>
               </details>
               {/* Desktop: always visible */}
               <div className="hidden md:block">
-                <FilterPanel locale={locale} selectedCity={city} selectedCategory={category as Category | undefined} />
+                <FilterPanel locale={locale} selectedCity={city} selectedCategory={category as Category | undefined} q={q} />
               </div>
             </aside>
             <div className="flex-1">
@@ -154,7 +183,7 @@ function WorkerCard({ worker, locale }: { worker: WorkerRow; locale: string }) {
       <div className="flex flex-wrap gap-1.5">
         {(pw.categories as Category[]).map((cat) => (
           <Badge key={cat} variant="category">
-            {CATEGORY_ICONS[cat]} {CATEGORY_LABELS_RU[cat]}
+            {CATEGORY_ICONS[cat]} {(locale === 'ro' ? CATEGORY_LABELS_RO : CATEGORY_LABELS_RU)[cat]}
           </Badge>
         ))}
       </div>
@@ -172,8 +201,16 @@ function WorkerCard({ worker, locale }: { worker: WorkerRow; locale: string }) {
   );
 }
 
-function FilterPanel({ locale, selectedCity, selectedCategory }: { locale: string; selectedCity?: string; selectedCategory?: Category }) {
-  const categories = Object.entries(CATEGORY_LABELS_RU) as [Category, string][];
+function buildFilterUrl(locale: string, params: { city?: string; category?: string; q?: string }): string {
+  const parts: string[] = [];
+  if (params.city) parts.push(`city=${encodeURIComponent(params.city)}`);
+  if (params.category) parts.push(`category=${params.category}`);
+  if (params.q) parts.push(`q=${encodeURIComponent(params.q)}`);
+  return `/${locale}/workers${parts.length ? `?${parts.join('&')}` : ''}`;
+}
+
+function FilterPanel({ locale, selectedCity, selectedCategory, q }: { locale: string; selectedCity?: string; selectedCategory?: Category; q?: string }) {
+  const categories = Object.entries(locale === 'ro' ? CATEGORY_LABELS_RO : CATEGORY_LABELS_RU) as [Category, string][];
   return (
     <div className="card p-4 flex flex-col gap-5 sticky top-24">
       <div>
@@ -181,11 +218,11 @@ function FilterPanel({ locale, selectedCity, selectedCategory }: { locale: strin
           {locale === 'ru' ? 'Город' : 'Oraș'}
         </div>
         <div className="flex flex-col gap-1">
-          <FilterLink href={`/${locale}/workers${selectedCategory ? `?category=${selectedCategory}` : ''}`} active={!selectedCity}>
+          <FilterLink href={buildFilterUrl(locale, { category: selectedCategory, q })} active={!selectedCity}>
             {locale === 'ru' ? 'Все города' : 'Toate orașele'}
           </FilterLink>
           {CITIES.map((c) => (
-            <FilterLink key={c} href={`/${locale}/workers?city=${encodeURIComponent(c)}${selectedCategory ? `&category=${selectedCategory}` : ''}`} active={selectedCity === c}>
+            <FilterLink key={c} href={buildFilterUrl(locale, { city: c, category: selectedCategory, q })} active={selectedCity === c}>
               {c}
             </FilterLink>
           ))}
@@ -196,11 +233,11 @@ function FilterPanel({ locale, selectedCity, selectedCategory }: { locale: strin
           {locale === 'ru' ? 'Специализация' : 'Specializare'}
         </div>
         <div className="flex flex-col gap-1">
-          <FilterLink href={`/${locale}/workers${selectedCity ? `?city=${encodeURIComponent(selectedCity)}` : ''}`} active={!selectedCategory}>
+          <FilterLink href={buildFilterUrl(locale, { city: selectedCity, q })} active={!selectedCategory}>
             {locale === 'ru' ? 'Все специальности' : 'Toate specialitățile'}
           </FilterLink>
           {categories.map(([slug, label]) => (
-            <FilterLink key={slug} href={`/${locale}/workers?category=${slug}${selectedCity ? `&city=${encodeURIComponent(selectedCity)}` : ''}`} active={selectedCategory === slug}>
+            <FilterLink key={slug} href={buildFilterUrl(locale, { city: selectedCity, category: slug, q })} active={selectedCategory === slug}>
               {label}
             </FilterLink>
           ))}

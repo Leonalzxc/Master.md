@@ -88,7 +88,7 @@ BEGIN
     PERFORM cron.schedule(
       'expire-overdue-jobs',
       '0 * * * *',  -- every hour at :00
-      $$SELECT public.expire_overdue_jobs()$$
+      'SELECT public.expire_overdue_jobs()'
     );
   END IF;
 EXCEPTION WHEN OTHERS THEN
@@ -96,3 +96,7 @@ EXCEPTION WHEN OTHERS THEN
   NULL;
 END;
 $$;
+
+-- Scheduled/admin service calls only; browsers cannot expire arbitrary jobs.
+REVOKE EXECUTE ON FUNCTION public.expire_overdue_jobs() FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.expire_overdue_jobs() TO service_role;
